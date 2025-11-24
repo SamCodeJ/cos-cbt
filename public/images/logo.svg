@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lightbulb concept with amber/orange theme -->
+  <circle cx="256" cy="256" r="200" fill="#FEF3C7" opacity="0.3"/>
+  
+  <!-- Lightbulb body -->
+  <path d="M256 100C210.294 100 173 137.294 173 183C173 211.333 186.667 236 206 254C220 267.333 228 280.667 230 294H282C284 280.667 292 267.333 306 254C325.333 236 339 211.333 339 183C339 137.294 301.706 100 256 100Z" fill="#1E293B"/>
+  
+  <!-- Bulb base -->
+  <rect x="230" y="294" width="52" height="40" rx="8" fill="#1E293B"/>
+  <rect x="235" y="334" width="42" height="30" rx="6" fill="#475569"/>
+  
+  <!-- Light rays -->
+  <line x1="256" y1="60" x2="256" y2="90" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  <line x1="340" y1="100" x2="320" y2="120" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  <line x1="380" y1="183" x2="350" y1="183" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  <line x1="172" y1="100" x2="192" y2="120" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  <line x1="132" y1="183" x2="162" y2="183" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Accent lines inside bulb -->
+  <line x1="220" y1="160" x2="220" y2="220" stroke="#F59E0B" stroke-width="6" stroke-linecap="round"/>
+  <line x1="240" y1="145" x2="240" y2="235" stroke="#F59E0B" stroke-width="6" stroke-linecap="round"/>
+  <line x1="260" y1="140" x2="260" y2="240" stroke="#FBBF24" stroke-width="6" stroke-linecap="round"/>
+</svg>
+
