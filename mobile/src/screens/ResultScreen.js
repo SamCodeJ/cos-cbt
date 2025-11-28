@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button, List, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI } from '../api/client';
 
 export default function ResultScreen({ route, navigation }) {
   const { examId } = route.params;
+  const insets = useSafeAreaInsets();
   
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,16 @@ export default function ResultScreen({ route, navigation }) {
   const loadResult = async () => {
     try {
       const data = await candidateAPI.getResult(examId);
+      
+      // Debug logging
+      console.log('📊 Result data received:', {
+        score_percentage: data.score_percentage,
+        pass_mark: data.pass_mark,
+        score_type: typeof data.score_percentage,
+        pass_mark_type: typeof data.pass_mark,
+        passed: data.passed
+      });
+      
       setResult(data);
     } catch (error) {
       console.error('Error loading result:', error);
@@ -68,11 +80,21 @@ export default function ResultScreen({ route, navigation }) {
     );
   }
 
-  const passed = result.score_percentage >= result.pass_mark;
+  // Ensure numerical comparison by converting both to numbers
+  const scorePercentage = Number(result.score_percentage);
+  const passMark = Number(result.pass_mark);
+  const passed = scorePercentage >= passMark;
+  
+  console.log('🔍 Pass/Fail Check:', {
+    scorePercentage,
+    passMark,
+    passed,
+    comparison: `${scorePercentage} >= ${passMark}`
+  });
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 16 }]}>
         <Text variant="headlineMedium" style={styles.headerTitle}>
           Exam Results
         </Text>
@@ -213,7 +235,7 @@ export default function ResultScreen({ route, navigation }) {
         </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button
           mode="contained"
           onPress={() => navigation.navigate('Dashboard')}
@@ -261,8 +283,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
@@ -389,7 +411,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const os = require('os');
 require('dotenv').config();
 
 const db = require('./database/db');
@@ -16,7 +17,21 @@ const auditRoutes = require('./routes/audit');
 const candidateRoutes = require('./routes/candidate');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+
+// Function to get local IP address
+const getLocalIPAddress = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal (i.e. 127.0.0.1) and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+};
 
 // Security Middleware
 app.use(helmet({
@@ -26,6 +41,7 @@ app.use(helmet({
 // Configure allowed origins
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8081',
   'http://localhost:19006'
 ];
@@ -46,12 +62,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
+// Rate limiting (more permissive in development)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev, 100 in production
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 app.use('/api/', limiter);
+
+console.log(`🛡️  Rate limiting: ${process.env.NODE_ENV === 'production' ? '100' : '1000'} requests per 15 minutes`);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -101,19 +122,32 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
+  const localIP = getLocalIPAddress();
+  
   console.log(`🚀 UI-GES Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`📱 Mobile Device URL: http://10.57.236.125:${PORT}/api`);
+  console.log(`📱 Mobile Device URL: http://${localIP}:${PORT}/api`);
+  console.log(`💡 Configure mobile app with IP: ${localIP}`);
   
   // Test database connection
   try {
     await db.query('SELECT NOW()');
     console.log('✅ Database connection successful');
+    
+    // Run migrations: Add shuffled answer columns if they don't exist
+    await db.query(`
+      ALTER TABLE exam_questions 
+      ADD COLUMN IF NOT EXISTS shuffled_correct_answer VARCHAR(1),
+      ADD COLUMN IF NOT EXISTS shuffled_option_a TEXT,
+      ADD COLUMN IF NOT EXISTS shuffled_option_b TEXT,
+      ADD COLUMN IF NOT EXISTS shuffled_option_c TEXT,
+      ADD COLUMN IF NOT EXISTS shuffled_option_d TEXT;
+    `);
+    console.log('✅ Database schema up to date (shuffled answer columns verified)');
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
   }
 });
 
 module.exports = app;
-

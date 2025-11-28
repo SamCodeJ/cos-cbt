@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power } from 'lucide-react';
+import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power, Eye, EyeOff } from 'lucide-react';
 import { teacherAPI } from '@/api/client';
 import { toast } from 'sonner';
 
@@ -43,6 +43,7 @@ export default function Candidates() {
     password: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     loadCandidates();
@@ -319,13 +320,27 @@ export default function Candidates() {
                 <Key className="w-4 h-4" />
                 New Password (Optional)
               </Label>
-              <Input
-                id="edit-password"
-                type="password"
-                value={editForm.password}
-                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                placeholder="Leave blank to keep current password"
-              />
+              <div className="relative">
+                <Input
+                  id="edit-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  placeholder="Leave blank to keep current password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               <p className="text-xs text-slate-500">
                 Only fill this if you want to reset the candidate's password
               </p>

@@ -1,5 +1,11 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 require('dotenv').config();
+
+// Override timestamp parsing to return raw string (no timezone conversion)
+// OID 1114 is TIMESTAMP WITHOUT TIME ZONE
+types.setTypeParser(1114, function(val) {
+  return val; // Return raw string instead of Date object
+});
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -15,6 +21,11 @@ const pool = new Pool({
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
+});
+
+// Set timezone to UTC for all connections to prevent timestamp conversion
+pool.on('connect', (client) => {
+  client.query('SET timezone = "UTC"');
 });
 
 module.exports = {

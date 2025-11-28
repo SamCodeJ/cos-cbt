@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, Card, ActivityIndicator, Divider, IconButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 const API_BASE_URL = 'http://10.57.236.125:3000'; // Use your computer's IP
 
 export default function ProfileScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,6 +25,11 @@ export default function ProfileScreen({ navigation }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const { setCandidate, logout } = useAuthStore();
 
@@ -223,7 +230,7 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 16 }]}>
         <Button 
           mode="text" 
           onPress={() => navigation.goBack()}
@@ -339,7 +346,13 @@ export default function ProfileScreen({ navigation }) {
               value={currentPassword}
               onChangeText={setCurrentPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showCurrentPassword}
+              right={
+                <TextInput.Icon
+                  icon={showCurrentPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                />
+              }
               style={styles.input}
             />
             <TextInput
@@ -347,7 +360,13 @@ export default function ProfileScreen({ navigation }) {
               value={newPassword}
               onChangeText={setNewPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showNewPassword}
+              right={
+                <TextInput.Icon
+                  icon={showNewPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                />
+              }
               style={styles.input}
             />
             <TextInput
@@ -355,7 +374,13 @@ export default function ProfileScreen({ navigation }) {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword}
+              right={
+                <TextInput.Icon
+                  icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                />
+              }
               style={styles.input}
             />
             <Button
@@ -416,7 +441,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
-    paddingTop: 48,
     paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,

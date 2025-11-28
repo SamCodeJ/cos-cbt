@@ -97,7 +97,40 @@ router.get('/exams', async (req, res) => {
       ORDER BY e.start_date DESC
     `, [req.user.id]);
 
-    res.json(result.rows);
+    // Add availability information to each exam
+    const now = new Date();
+    const examsWithAvailability = result.rows.map(exam => {
+      const startDate = new Date(exam.start_date);
+      const endDate = new Date(exam.end_date);
+      
+      let is_available = exam.status === 'active' && now >= startDate && now <= endDate;
+      let availability_message = null;
+      
+      if (exam.status !== 'active') {
+        if (exam.status === 'scheduled') {
+          availability_message = `Starts ${startDate.toLocaleString()}`;
+        } else if (exam.status === 'draft') {
+          availability_message = 'Not yet published';
+        } else if (exam.status === 'completed') {
+          availability_message = 'Completed';
+        }
+        is_available = false;
+      } else if (now < startDate) {
+        availability_message = `Starts ${startDate.toLocaleString()}`;
+        is_available = false;
+      } else if (now > endDate) {
+        availability_message = `Ended ${endDate.toLocaleString()}`;
+        is_available = false;
+      }
+      
+      return {
+        ...exam,
+        is_available,
+        availability_message
+      };
+    });
+
+    res.json(examsWithAvailability);
   } catch (error) {
     console.error('Get candidate exams error:', error);
     res.status(500).json({ error: 'Failed to fetch exams' });
@@ -132,7 +165,33 @@ router.get('/exams/:id', async (req, res) => {
       return res.status(404).json({ error: 'Exam not found' });
     }
 
-    res.json(result.rows[0]);
+    const exam = result.rows[0];
+    
+    // Add availability information
+    const now = new Date();
+    const startDate = new Date(exam.start_date);
+    const endDate = new Date(exam.end_date);
+    
+    exam.is_available = exam.status === 'active' && now >= startDate && now <= endDate;
+    exam.availability_message = null;
+    
+    if (exam.status !== 'active') {
+      if (exam.status === 'scheduled') {
+        exam.availability_message = `Starts on ${startDate.toLocaleString()}`;
+      } else if (exam.status === 'draft') {
+        exam.availability_message = 'Not yet published';
+      } else if (exam.status === 'completed') {
+        exam.availability_message = 'Exam has ended';
+      }
+    } else if (now < startDate) {
+      exam.availability_message = `Starts on ${startDate.toLocaleString()}`;
+      exam.is_available = false;
+    } else if (now > endDate) {
+      exam.availability_message = `Ended on ${endDate.toLocaleString()}`;
+      exam.is_available = false;
+    }
+
+    res.json(exam);
   } catch (error) {
     console.error('Get exam details error:', error);
     res.status(500).json({ error: 'Failed to fetch exam details' });
@@ -189,9 +248,9 @@ router.post('/exams/:id/start', async (req, res) => {
       }
     }
 
-    // Get exam details
+    // Get exam details including status and schedule
     const examResult = await client.query(
-      'SELECT questions_per_candidate, randomize_questions FROM exams WHERE id = $1',
+      'SELECT questions_per_candidate, randomize_questions, randomize_options, status, start_date, end_date, title FROM exams WHERE id = $1',
       [id]
     );
 
@@ -201,6 +260,38 @@ router.post('/exams/:id/start', async (req, res) => {
     }
 
     const exam = examResult.rows[0];
+    const now = new Date();
+    const startDate = new Date(exam.start_date);
+    const endDate = new Date(exam.end_date);
+
+    // Check if exam is active
+    if (exam.status !== 'active') {
+      await client.query('ROLLBACK');
+      let message = 'This exam is not available yet';
+      if (exam.status === 'draft') {
+        message = 'This exam is still in draft. Please wait for your teacher to activate it.';
+      } else if (exam.status === 'scheduled') {
+        message = `This exam is scheduled to start on ${startDate.toLocaleString()}. Please wait until the scheduled time.`;
+      } else if (exam.status === 'completed') {
+        message = 'This exam has been completed and is no longer available.';
+      }
+      return res.status(403).json({ error: message });
+    }
+
+    // Check if current time is within exam window
+    if (now < startDate) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ 
+        error: `This exam starts on ${startDate.toLocaleString()}. Please try again at that time.` 
+      });
+    }
+
+    if (now > endDate) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ 
+        error: `This exam ended on ${endDate.toLocaleString()}. You can no longer take this exam.` 
+      });
+    }
 
     // Get all questions for this exam
     const allQuestions = await client.query(
@@ -219,6 +310,34 @@ router.post('/exams/:id/start', async (req, res) => {
     // Take only the required number of questions
     selectedQuestions = selectedQuestions.slice(0, exam.questions_per_candidate);
 
+    // Randomize options if enabled
+    console.log('🔀 Randomize options enabled:', exam.randomize_options);
+    if (exam.randomize_options) {
+      selectedQuestions = selectedQuestions.map(question => {
+        const originalQuestion = { ...question };
+        const shuffledQuestion = randomizeQuestionOptions(question);
+        
+        console.log(`🎲 Question ${question.id} shuffling:`, {
+          original: {
+            correct_answer: originalQuestion.correct_answer,
+            option_a: originalQuestion.option_a?.substring(0, 20),
+            option_b: originalQuestion.option_b?.substring(0, 20),
+            option_c: originalQuestion.option_c?.substring(0, 20),
+            option_d: originalQuestion.option_d?.substring(0, 20)
+          },
+          shuffled: {
+            correct_answer: shuffledQuestion.correct_answer,
+            option_a: shuffledQuestion.option_a?.substring(0, 20),
+            option_b: shuffledQuestion.option_b?.substring(0, 20),
+            option_c: shuffledQuestion.option_c?.substring(0, 20),
+            option_d: shuffledQuestion.option_d?.substring(0, 20)
+          }
+        });
+        
+        return shuffledQuestion;
+      });
+    }
+
     // Create exam attempt
     const attemptResult = await client.query(`
       INSERT INTO exam_attempts (exam_id, candidate_id, total_questions, status)
@@ -228,12 +347,36 @@ router.post('/exams/:id/start', async (req, res) => {
 
     const attemptId = attemptResult.rows[0].id;
 
-    // Assign questions to candidate
+    // Assign questions to candidate with shuffled options
     for (let i = 0; i < selectedQuestions.length; i++) {
+      const question = selectedQuestions[i];
+      
+      console.log(`💾 Storing Q${question.id} in exam_questions:`, {
+        shuffled_correct_answer: question.correct_answer,
+        shuffled_option_a: question.option_a?.substring(0, 20),
+        shuffled_option_b: question.option_b?.substring(0, 20),
+        shuffled_option_c: question.option_c?.substring(0, 20),
+        shuffled_option_d: question.option_d?.substring(0, 20)
+      });
+      
       await client.query(`
-        INSERT INTO exam_questions (exam_id, candidate_id, question_id, question_order)
-        VALUES ($1, $2, $3, $4)
-      `, [id, candidateId, selectedQuestions[i].id, i + 1]);
+        INSERT INTO exam_questions (
+          exam_id, candidate_id, question_id, question_order, 
+          shuffled_correct_answer, shuffled_option_a, shuffled_option_b, 
+          shuffled_option_c, shuffled_option_d
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [
+        id, 
+        candidateId, 
+        question.id, 
+        i + 1, 
+        question.correct_answer,
+        question.option_a,
+        question.option_b,
+        question.option_c,
+        question.option_d
+      ]);
     }
 
     await client.query('COMMIT');
@@ -279,17 +422,38 @@ router.post('/exams/:id/save-answer', async (req, res) => {
 
     const attemptId = attemptResult.rows[0].id;
 
-    // Get correct answer
-    const questionResult = await db.query(
-      'SELECT correct_answer FROM questions WHERE id = $1',
-      [question_id]
-    );
+    // Get correct answer (use shuffled version if available)
+    const questionResult = await db.query(`
+      SELECT 
+        q.correct_answer as original_correct_answer,
+        eq.shuffled_correct_answer,
+        COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer,
+        eq.shuffled_option_a,
+        eq.shuffled_option_b,
+        eq.shuffled_option_c,
+        eq.shuffled_option_d
+      FROM questions q
+      LEFT JOIN exam_questions eq ON eq.question_id = q.id 
+        AND eq.exam_id = $1 
+        AND eq.candidate_id = $2
+      WHERE q.id = $3
+    `, [id, req.user.id, question_id]);
 
     if (questionResult.rows.length === 0) {
       return res.status(404).json({ error: 'Question not found' });
     }
 
-    const isCorrect = questionResult.rows[0].correct_answer === answer;
+    const correctAnswer = questionResult.rows[0].correct_answer;
+    const isCorrect = correctAnswer === answer;
+    
+    console.log(`🎯 Answer validation for Q${question_id}:`, {
+      candidate_answer: answer,
+      original_correct: questionResult.rows[0].original_correct_answer,
+      shuffled_correct: questionResult.rows[0].shuffled_correct_answer,
+      used_correct_answer: correctAnswer,
+      is_correct: isCorrect,
+      has_shuffled_data: !!questionResult.rows[0].shuffled_correct_answer
+    });
 
     // Insert or update answer
     await db.query(`
@@ -349,13 +513,31 @@ router.post('/exams/:id/submit', async (req, res) => {
     // Save all answers
     for (const ans of answers) {
       if (ans.answer) {
-        const questionResult = await client.query(
-          'SELECT correct_answer FROM questions WHERE id = $1',
-          [ans.question_id]
-        );
+        // Get correct answer (use shuffled version if available)
+        const questionResult = await client.query(`
+          SELECT 
+            q.correct_answer as original_correct_answer,
+            eq.shuffled_correct_answer,
+            COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
+          FROM questions q
+          LEFT JOIN exam_questions eq ON eq.question_id = q.id 
+            AND eq.exam_id = $1 
+            AND eq.candidate_id = $2
+          WHERE q.id = $3
+        `, [id, req.user.id, ans.question_id]);
 
         if (questionResult.rows.length > 0) {
-          const isCorrect = questionResult.rows[0].correct_answer === ans.answer;
+          const correctAnswer = questionResult.rows[0].correct_answer;
+          const isCorrect = correctAnswer === ans.answer;
+          
+          console.log(`🎯 Final validation for Q${ans.question_id}:`, {
+            candidate_answer: ans.answer,
+            original_correct: questionResult.rows[0].original_correct_answer,
+            shuffled_correct: questionResult.rows[0].shuffled_correct_answer,
+            used_correct_answer: correctAnswer,
+            is_correct: isCorrect,
+            has_shuffled_data: !!questionResult.rows[0].shuffled_correct_answer
+          });
 
           await client.query(`
             INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
@@ -381,8 +563,15 @@ router.post('/exams/:id/submit', async (req, res) => {
       'SELECT pass_mark FROM exams WHERE id = $1',
       [id]
     );
-    const passMark = examResult.rows[0].pass_mark;
+    const passMark = parseFloat(examResult.rows[0].pass_mark);
     const passed = scorePercentage >= passMark;
+    
+    console.log('📊 Exam submission - Pass/Fail calculation:', {
+      scorePercentage,
+      passMark,
+      passed,
+      comparison: `${scorePercentage} >= ${passMark} = ${passed}`
+    });
 
     // Save violations
     if (violations && violations.length > 0) {
@@ -411,7 +600,7 @@ router.post('/exams/:id/submit', async (req, res) => {
 
     res.json({
       message: 'Exam submitted successfully',
-      score_percentage: scorePercentage,
+      score_percentage: parseFloat(scorePercentage.toFixed(2)),
       correct_answers: correctAnswers,
       total_questions: attempt.total_questions,
       passed,
@@ -476,22 +665,25 @@ router.get('/exams/:id/result', async (req, res) => {
 
     const attemptId = result.rows[0].id;
 
-    // Get answers with questions
+    // Get answers with questions (use shuffled options if available)
     const answersResult = await db.query(`
       SELECT 
         ans.answer as your_answer,
         ans.is_correct,
         q.question_text,
-        q.option_a,
-        q.option_b,
-        q.option_c,
-        q.option_d,
-        q.correct_answer
+        COALESCE(eq.shuffled_option_a, q.option_a) as option_a,
+        COALESCE(eq.shuffled_option_b, q.option_b) as option_b,
+        COALESCE(eq.shuffled_option_c, q.option_c) as option_c,
+        COALESCE(eq.shuffled_option_d, q.option_d) as option_d,
+        COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
       FROM exam_answers ans
       JOIN questions q ON ans.question_id = q.id
+      LEFT JOIN exam_questions eq ON eq.question_id = q.id 
+        AND eq.exam_id = $2
+        AND eq.candidate_id = $3
       WHERE ans.attempt_id = $1
-      ORDER BY q.id
-    `, [attemptId]);
+      ORDER BY eq.question_order
+    `, [attemptId, id, req.user.id]);
 
     // Get violations
     const violationsResult = await db.query(
@@ -499,12 +691,34 @@ router.get('/exams/:id/result', async (req, res) => {
       [attemptId]
     );
 
-    res.json({
-      ...result.rows[0],
+    // Ensure numeric types for comparison
+    const resultData = result.rows[0];
+    const response = {
+      ...resultData,
+      score_percentage: parseFloat(resultData.score_percentage),
+      pass_mark: parseFloat(resultData.pass_mark),
+      correct_answers: parseInt(resultData.correct_answers),
+      total_questions: parseInt(resultData.total_questions),
+      time_taken: parseInt(resultData.time_taken),
+      violations_count: parseInt(resultData.violations_count),
+      passed: resultData.passed, // This is already boolean from database
       answers: answersResult.rows,
       violations: violationsResult.rows,
       show_question_review: true
+    };
+    
+    console.log('📊 Result data being sent:', {
+      score_percentage: response.score_percentage,
+      pass_mark: response.pass_mark,
+      passed: response.passed,
+      types: {
+        score_percentage: typeof response.score_percentage,
+        pass_mark: typeof response.pass_mark,
+        passed: typeof response.passed
+      }
     });
+
+    res.json(response);
   } catch (error) {
     console.error('Get result error:', error);
     res.status(500).json({ error: 'Failed to fetch result' });
@@ -519,6 +733,37 @@ function shuffleArray(array) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+// Helper function to randomize question options
+function randomizeQuestionOptions(question) {
+  // Create array of options with their labels
+  const options = [];
+  
+  if (question.option_a) options.push({ label: 'A', text: question.option_a });
+  if (question.option_b) options.push({ label: 'B', text: question.option_b });
+  if (question.option_c) options.push({ label: 'C', text: question.option_c });
+  if (question.option_d) options.push({ label: 'D', text: question.option_d });
+  
+  // Remember which option is correct
+  const correctOption = options.find(opt => opt.label === question.correct_answer);
+  
+  // Shuffle the options
+  const shuffledOptions = shuffleArray(options);
+  
+  // Find new position of correct answer
+  const newCorrectLabel = ['A', 'B', 'C', 'D'][shuffledOptions.indexOf(correctOption)];
+  
+  // Create new question object with shuffled options
+  return {
+    ...question,
+    option_a: shuffledOptions[0] ? shuffledOptions[0].text : null,
+    option_b: shuffledOptions[1] ? shuffledOptions[1].text : null,
+    option_c: shuffledOptions[2] ? shuffledOptions[2].text : null,
+    option_d: shuffledOptions[3] ? shuffledOptions[3].text : null,
+    correct_answer: newCorrectLabel,
+    original_correct_answer: question.correct_answer // Keep track of original for debugging
+  };
 }
 
 module.exports = router;

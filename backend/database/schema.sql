@@ -80,6 +80,7 @@ CREATE TABLE exam_questions (
     candidate_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
     question_order INTEGER NOT NULL,
+    shuffled_correct_answer VARCHAR(1), -- Stores correct answer after option randomization
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(exam_id, candidate_id, question_id)
 );

@@ -22,7 +22,13 @@ router.get('/', async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json(result.rows);
+    // Ensure exam_count is returned as a number
+    const teachers = result.rows.map(teacher => ({
+      ...teacher,
+      exam_count: parseInt(teacher.exam_count) || 0
+    }));
+
+    res.json(teachers);
   } catch (error) {
     console.error('Get teachers error:', error);
     res.status(500).json({ error: 'Failed to fetch teachers' });
@@ -46,7 +52,11 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
-    res.json(result.rows[0]);
+    const teacher = result.rows[0];
+    // Ensure exam_count is returned as a number
+    teacher.exam_count = parseInt(teacher.exam_count) || 0;
+
+    res.json(teacher);
   } catch (error) {
     console.error('Get teacher error:', error);
     res.status(500).json({ error: 'Failed to fetch teacher' });
@@ -239,7 +249,14 @@ router.get('/candidates/all', async (req, res) => {
       ORDER BY u.created_at DESC
     `);
 
-    res.json(result.rows);
+    // Ensure count fields are returned as numbers
+    const candidates = result.rows.map(candidate => ({
+      ...candidate,
+      exam_count: parseInt(candidate.exam_count) || 0,
+      attempts_count: parseInt(candidate.attempts_count) || 0
+    }));
+
+    res.json(candidates);
   } catch (error) {
     console.error('Get candidates error:', error);
     res.status(500).json({ error: 'Failed to fetch candidates' });

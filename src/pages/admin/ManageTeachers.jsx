@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, UserX, Search } from 'lucide-react';
+import { Plus, Edit, UserX, Search, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 
@@ -32,6 +32,7 @@ export default function ManageTeachers() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -275,13 +276,27 @@ export default function ManageTeachers() {
               <Label>
                 Password {editingTeacher ? '(leave blank to keep unchanged)' : '*'}
               </Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
-                required={!editingTeacher}
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  required={!editingTeacher}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               <p className="text-sm text-slate-500">
                 {editingTeacher ? 'Minimum 6 characters if changing' : 'Minimum 6 characters required'}
               </p>

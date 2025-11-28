@@ -28,13 +28,22 @@ const examSchema = z.object({
   duration: z.number().min(10, 'Duration must be at least 10 minutes'),
   questions_per_candidate: z.number().min(1, 'Must have at least 1 question'),
   pass_mark: z.number().min(0).max(100, 'Pass mark must be between 0-100'),
-  start_date: z.string(),
-  end_date: z.string(),
+  start_date: z.string().min(1, 'Start date is required'),
+  end_date: z.string().min(1, 'End date is required'),
   status: z.enum(['draft', 'scheduled', 'active', 'completed']),
   show_results: z.boolean(),
   randomize_questions: z.boolean(),
   randomize_options: z.boolean(),
   enforce_screen_lock: z.boolean(),
+}).refine((data) => {
+  // Validate that end_date is after start_date
+  if (data.start_date && data.end_date) {
+    return new Date(data.end_date) > new Date(data.start_date);
+  }
+  return true;
+}, {
+  message: 'End date must be after start date',
+  path: ['end_date'],
 });
 
 export default function CreateExam() {
@@ -80,8 +89,24 @@ export default function CreateExam() {
     setIsLoading(true);
     try {
       const exam = await examAPI.get(id);
+      
+      // Convert dates to datetime-local format (YYYY-MM-DDTHH:mm)
+      // Extract date/time without timezone conversion
+      const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        // PostgreSQL returns: "2024-11-26T14:00:00.000Z" or "2024-11-26T14:00:00"
+        // Extract just the date and time parts: "2024-11-26T14:00"
+        const withoutTimezone = dateString.replace('Z', '').split('.')[0];
+        return withoutTimezone.substring(0, 16);
+      };
+
       Object.keys(exam).forEach(key => {
-        setValue(key, exam[key]);
+        // Format date fields for datetime-local inputs
+        if (key === 'start_date' || key === 'end_date') {
+          setValue(key, formatDateForInput(exam[key]));
+        } else {
+          setValue(key, exam[key]);
+        }
       });
 
       const [candidatesData, questionsData] = await Promise.all([
@@ -123,8 +148,24 @@ export default function CreateExam() {
     try {
       let examId = id;
 
+      // Convert datetime-local format to ISO string for backend
+      // Keep as-is without timezone to preserve the exact time entered
+      const formatDateForBackend = (dateTimeLocal) => {
+        if (!dateTimeLocal) return null;
+        // datetime-local format: "YYYY-MM-DDTHH:mm"
+        // Append seconds but NO timezone ('Z') to keep it as a naive datetime
+        // PostgreSQL TIMESTAMP (without time zone) will store this exact time
+        return `${dateTimeLocal}:00.000`;
+      };
+
+      const formattedData = {
+        ...data,
+        start_date: formatDateForBackend(data.start_date),
+        end_date: formatDateForBackend(data.end_date),
+      };
+
       if (id) {
-        await examAPI.update(id, data);
+        await examAPI.update(id, formattedData);
 
         // When editing, handle candidate deletions
         if (originalCandidates.length > 0) {
@@ -160,7 +201,7 @@ export default function CreateExam() {
 
         toast.success('Exam updated successfully');
       } else {
-        const newExam = await examAPI.create(data);
+        const newExam = await examAPI.create(formattedData);
         examId = newExam.id;
         
         // Save candidates and questions for new exam

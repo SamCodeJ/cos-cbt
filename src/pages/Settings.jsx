@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Save, User, Camera, Trash2, Upload } from 'lucide-react';
+import { Save, User, Camera, Trash2, Upload, Eye, EyeOff } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -17,6 +17,9 @@ export default function Settings() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef(null);
   
   // Separate forms for profile and password
@@ -272,30 +275,72 @@ export default function Settings() {
               <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current_password">Current Password</Label>
-                  <Input
-                    id="current_password"
-                    type="password"
-                    {...passwordForm.register('current_password')}
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="current_password"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      {...passwordForm.register('current_password')}
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    >
+                      {showCurrentPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new_password">New Password</Label>
-                  <Input
-                    id="new_password"
-                    type="password"
-                    {...passwordForm.register('new_password')}
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="new_password"
+                      type={showNewPassword ? 'text' : 'password'}
+                      {...passwordForm.register('new_password')}
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm_password">Confirm New Password</Label>
-                  <Input
-                    id="confirm_password"
-                    type="password"
-                    {...passwordForm.register('confirm_password')}
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirm_password"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      {...passwordForm.register('confirm_password')}
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <Button 
                   type="submit" 

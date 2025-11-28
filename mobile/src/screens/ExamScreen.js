@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert, AppState } from 'react-native';
 import { Text, Button, RadioButton, IconButton, Card, Portal, Modal, Chip } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ExamScreen({ route, navigation }) {
   const { exam } = route.params;
+  const insets = useSafeAreaInsets();
   
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -74,7 +76,11 @@ export default function ExamScreen({ route, navigation }) {
     timerRef.current = setInterval(() => {
       setTimeRemaining((prevTime) => {
         if (prevTime <= 1) {
-          handleAutoSubmit('Time expired');
+          clearInterval(timerRef.current);
+          clearInterval(autoSaveRef.current);
+          setTimeout(() => {
+            submitExam('Time expired - exam duration completed');
+          }, 100);
           return 0;
         }
         return prevTime - 1;
@@ -114,7 +120,10 @@ export default function ExamScreen({ route, navigation }) {
         const newViolations = [...prevViolations, violation];
         
         if (newViolations.length >= 3) {
-          handleAutoSubmit('Too many violations');
+          // Auto-submit with updated violations list
+          setTimeout(() => {
+            handleAutoSubmitWithViolations(newViolations, 'Too many violations (3 or more screen lock violations)');
+          }, 100);
         } else {
           Alert.alert(
             'Warning',
@@ -198,6 +207,48 @@ export default function ExamScreen({ route, navigation }) {
     await submitExam(reason);
   };
 
+  const handleAutoSubmitWithViolations = async (violationsList, reason) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    clearInterval(timerRef.current);
+    clearInterval(autoSaveRef.current);
+
+    try {
+      const formattedAnswers = questions.map((q) => ({
+        question_id: q.id,
+        answer: answers[q.id] || null,
+      }));
+
+      await candidateAPI.submitExam(exam.id, formattedAnswers, violationsList);
+      await AsyncStorage.removeItem(`exam_${exam.id}_progress`);
+      
+      Alert.alert(
+        'Exam Auto-Submitted',
+        reason,
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            if (exam.show_results) {
+              navigation.replace('Result', { examId: exam.id });
+            } else {
+              navigation.navigate('Dashboard');
+            }
+          }
+        }],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Auto-submit error:', error);
+      Alert.alert(
+        'Exam Auto-Submitted',
+        'Your exam has been auto-submitted due to violations. You will be redirected to the dashboard.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Dashboard') }],
+        { cancelable: false }
+      );
+    }
+  };
+
   const submitExam = async (autoSubmitReason = null) => {
     if (isSubmitting) return;
     
@@ -215,10 +266,22 @@ export default function ExamScreen({ route, navigation }) {
       await AsyncStorage.removeItem(`exam_${exam.id}_progress`);
       
       if (autoSubmitReason) {
-        Alert.alert('Exam Submitted', `Your exam has been auto-submitted: ${autoSubmitReason}`);
-      }
-      
-      if (exam.show_results) {
+        Alert.alert(
+          'Exam Auto-Submitted',
+          autoSubmitReason,
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              if (exam.show_results) {
+                navigation.replace('Result', { examId: exam.id });
+              } else {
+                navigation.navigate('Dashboard');
+              }
+            }
+          }],
+          { cancelable: false }
+        );
+      } else if (exam.show_results) {
         navigation.replace('Result', { examId: exam.id });
       } else {
         Alert.alert(
@@ -274,7 +337,11 @@ export default function ExamScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, timeRemaining < 300 && styles.headerWarning]}>
+      <View style={[
+        styles.header, 
+        timeRemaining < 300 && styles.headerWarning,
+        { paddingTop: Math.max(insets.top, 16) + 16 }
+      ]}>
         <View style={styles.headerLeft}>
           <Text variant="titleMedium" style={styles.timerText}>
             {formatTime(timeRemaining)}
@@ -282,10 +349,17 @@ export default function ExamScreen({ route, navigation }) {
           {violations.length > 0 && (
             <Chip
               icon="alert"
-              style={styles.violationChip}
-              textStyle={{ fontSize: 12 }}
+              style={[
+                styles.violationChip,
+                violations.length >= 2 && styles.violationChipCritical
+              ]}
+              textStyle={{ 
+                fontSize: 12, 
+                fontWeight: 'bold',
+                color: violations.length >= 2 ? '#fff' : '#991b1b'
+              }}
             >
-              {violations.length} violation(s)
+              {violations.length}/3 violations
             </Chip>
           )}
         </View>
@@ -338,7 +412,7 @@ export default function ExamScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Navigation Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.navigationButtons}>
           <Button
             mode="outlined"
@@ -456,8 +530,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 16,
-    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 2,
     borderBottomColor: '#e2e8f0',
     flexDirection: 'row',
@@ -480,6 +554,9 @@ const styles = StyleSheet.create({
   },
   violationChip: {
     backgroundColor: '#fee2e2',
+  },
+  violationChipCritical: {
+    backgroundColor: '#dc2626',
   },
   questionCounter: {
     color: '#64748b',
@@ -517,7 +594,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },

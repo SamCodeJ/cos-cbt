@@ -487,11 +487,7 @@ eas build --platform all
 2. Create a feature branch
 3. Make your changes
 4. Test thoroughly (web and mobile)
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - feel free to use this project for your CBT needs.
+5. Submit a pull reque
 
 ## 🙏 Acknowledgments
 

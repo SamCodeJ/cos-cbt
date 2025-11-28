@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, Button, Chip, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DashboardScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,7 +74,7 @@ export default function DashboardScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 16 }]}>
         <View>
           <Text variant="headlineMedium" style={styles.headerTitle}>
             Welcome Back
@@ -136,6 +138,15 @@ export default function DashboardScreen({ navigation }) {
                   </View>
                 </View>
 
+                {/* Availability Message */}
+                {exam.availability_message && !exam.has_taken && (
+                  <View style={styles.availabilityBanner}>
+                    <Text style={styles.availabilityText}>
+                      {exam.availability_message}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.examActions}>
                   <Button
                     mode="outlined"
@@ -145,13 +156,15 @@ export default function DashboardScreen({ navigation }) {
                     View Instructions
                   </Button>
                   
-                  {exam.status === 'active' && !exam.has_taken && (
+                  {!exam.has_taken && (
                     <Button
                       mode="contained"
                       onPress={() => navigation.navigate('ExamInstructions', { exam })}
                       style={styles.actionButton}
+                      disabled={!exam.is_available}
+                      buttonColor={exam.is_available ? '#d97706' : '#94a3b8'}
                     >
-                      Start Exam
+                      {exam.is_available ? 'Start Exam' : 'Not Available'}
                     </Button>
                   )}
                   
@@ -203,8 +216,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -267,6 +280,19 @@ const styles = StyleSheet.create({
   detailValue: {
     color: '#1e293b',
     fontSize: 14,
+    fontWeight: '500',
+  },
+  availabilityBanner: {
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  availabilityText: {
+    color: '#92400e',
+    fontSize: 13,
     fontWeight: '500',
   },
   examActions: {

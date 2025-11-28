@@ -36,7 +36,7 @@ export default function Dashboard() {
       const allResults = await resultsAPI.list();
 
       const activeExams = exams.filter(e => e.status === 'active').length;
-      const totalCandidates = exams.reduce((sum, e) => sum + (e.candidate_count || 0), 0);
+      const totalCandidates = exams.reduce((sum, e) => sum + (parseInt(e.candidate_count) || 0), 0);
       const passRate = calculatePassRate(allResults);
 
       setStats({

@@ -1,16 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Card, ActivityIndicator } from 'react-native-paper';
-import { candidateAPI } from '../api/client';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { candidateAPI, testConnection } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 
 export default function LoginScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState(null);
   
   const { setToken, setCandidate } = useAuthStore();
+
+  // Test connection on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      const result = await testConnection();
+      setConnectionStatus(result);
+      
+      if (!result.success) {
+        console.log('⚠️  Backend connection test failed on login screen load');
+      }
+    };
+    
+    checkConnection();
+  }, []);
 
   const handleLogin = async () => {
     setError('');
@@ -27,7 +45,30 @@ export default function LoginScreen({ navigation }) {
       setCandidate(data.candidate);
       navigation.replace('Dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
+      // Enhanced error messages based on error type
+      let errorMessage = 'Login failed. Please check your credentials.';
+      
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        errorMessage = '❌ Cannot reach server.\n\n' +
+          '1. Check if backend is running\n' +
+          '2. Verify you\'re on the same WiFi\n' +
+          '3. Check IP address in app settings';
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = '⏱️ Connection timeout. Server is not responding.\n\nPlease check if the backend server is running.';
+      } else if (err.response?.status === 401) {
+        errorMessage = '🔐 Invalid email or password.\n\nPlease check your credentials and try again.';
+      } else if (err.response?.status === 403) {
+        errorMessage = '🚫 Account is deactivated.\n\nPlease contact your teacher.';
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      }
+      
+      setError(errorMessage);
+      console.error('Login error details:', {
+        code: err.code,
+        status: err.response?.status,
+        message: err.message
+      });
     } finally {
       setLoading(false);
     }
@@ -38,7 +79,13 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[
+        styles.scrollContent, 
+        { 
+          paddingTop: Math.max(insets.top, 20) + 20,
+          paddingBottom: Math.max(insets.bottom, 20) + 20 
+        }
+      ]}>
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
             <Text style={styles.logoText}>UI</Text>
@@ -55,6 +102,24 @@ export default function LoginScreen({ navigation }) {
             <Text variant="bodyMedium" style={styles.cardSubtitle}>
               Enter your credentials to access your exams
             </Text>
+
+            {/* Connection Status Indicator */}
+            {connectionStatus && !connectionStatus.success && (
+              <View style={styles.warningBox}>
+                <Text style={styles.warningTitle}>⚠️ Connection Warning</Text>
+                <Text style={styles.warningText}>Backend server may not be reachable</Text>
+                <Button 
+                  mode="text" 
+                  onPress={async () => {
+                    const result = await testConnection();
+                    setConnectionStatus(result);
+                  }}
+                  style={styles.retryButton}
+                >
+                  Test Connection Again
+                </Button>
+              </View>
+            )}
 
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
@@ -76,7 +141,13 @@ export default function LoginScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               mode="outlined"
-              secureTextEntry
+              secureTextEntry={!showPassword}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowPassword(!showPassword)}
+                />
+              }
               style={styles.input}
               disabled={loading}
             />
@@ -118,7 +189,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
   },
   logoContainer: {
     alignItems: 'center',
@@ -179,7 +250,31 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#ef4444',
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: 'left',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  warningTitle: {
+    color: '#92400e',
+    fontWeight: 'bold',
+    marginBottom: 4,
+    fontSize: 14,
+  },
+  warningText: {
+    color: '#92400e',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  retryButton: {
+    marginTop: 4,
   },
   demoCredentials: {
     marginTop: 24,

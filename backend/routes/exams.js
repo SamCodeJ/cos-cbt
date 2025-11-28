@@ -32,7 +32,14 @@ router.get('/', async (req, res) => {
     query += ' ORDER BY e.created_at DESC';
 
     const result = await db.query(query, params);
-    res.json(result.rows);
+    
+    // Ensure candidate_count is returned as a number
+    const exams = result.rows.map(exam => ({
+      ...exam,
+      candidate_count: parseInt(exam.candidate_count) || 0
+    }));
+    
+    res.json(exams);
   } catch (error) {
     console.error('Get exams error:', error);
     res.status(500).json({ error: 'Failed to fetch exams' });
@@ -65,6 +72,9 @@ router.get('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Ensure candidate_count is returned as a number
+    exam.candidate_count = parseInt(exam.candidate_count) || 0;
+
     res.json(exam);
   } catch (error) {
     console.error('Get exam error:', error);
@@ -79,6 +89,8 @@ router.post('/',
   body('duration').isInt({ min: 10 }).withMessage('Duration must be at least 10 minutes'),
   body('questions_per_candidate').isInt({ min: 1 }).withMessage('Must have at least 1 question'),
   body('pass_mark').isFloat({ min: 0, max: 100 }).withMessage('Pass mark must be between 0-100'),
+  body('start_date').notEmpty().withMessage('Start date is required').isISO8601().withMessage('Invalid start date format'),
+  body('end_date').notEmpty().withMessage('End date is required').isISO8601().withMessage('Invalid end date format'),
   async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -105,6 +117,14 @@ router.post('/',
         status = 'draft'
       } = req.body;
 
+      // Validate that end_date is after start_date
+      if (start_date && end_date && new Date(end_date) <= new Date(start_date)) {
+        return res.status(400).json({ 
+          error: 'Validation failed',
+          errors: [{ msg: 'End date must be after start date', param: 'end_date' }]
+        });
+      }
+
       console.log('Creating exam with data:', {
         teacher_id: req.user.id,
         title,
@@ -113,7 +133,9 @@ router.post('/',
         questions_per_candidate,
         pass_mark,
         start_date,
+        start_date_type: typeof start_date,
         end_date,
+        end_date_type: typeof end_date,
         show_results,
         randomize_questions,
         randomize_options,
@@ -191,7 +213,22 @@ router.put('/:id', async (req, res) => {
       status
     } = req.body;
 
-    const result = await db.query(`
+      // Validate that end_date is after start_date (if both are provided)
+      if (start_date && end_date && new Date(end_date) <= new Date(start_date)) {
+        return res.status(400).json({ 
+          error: 'Validation failed',
+          errors: [{ msg: 'End date must be after start date', param: 'end_date' }]
+        });
+      }
+
+      console.log('📅 Dates being updated:', {
+        start_date,
+        end_date,
+        start_parsed: start_date ? new Date(start_date).toString() : null,
+        end_parsed: end_date ? new Date(end_date).toString() : null
+      });
+
+      const result = await db.query(`
       UPDATE exams SET
         title = COALESCE($1, title),
         subject = COALESCE($2, subject),

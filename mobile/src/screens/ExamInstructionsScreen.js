@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button, List } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ExamInstructionsScreen({ route, navigation }) {
   const { exam } = route.params;
+  const insets = useSafeAreaInsets();
 
   const handleStartExam = () => {
     navigation.navigate('Exam', { exam });
@@ -11,7 +13,7 @@ export default function ExamInstructionsScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) + 16 }]}>
         <Text variant="headlineMedium" style={styles.headerTitle}>
           Exam Instructions
         </Text>
@@ -141,7 +143,7 @@ export default function ExamInstructionsScreen({ route, navigation }) {
         </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button
           mode="contained"
           onPress={handleStartExam}
@@ -162,8 +164,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -233,7 +235,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
