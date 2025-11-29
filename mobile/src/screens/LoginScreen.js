@@ -87,9 +87,11 @@ export default function LoginScreen({ navigation }) {
         }
       ]}>
         <View style={styles.logoContainer}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>UI</Text>
-          </View>
+          <Image 
+            source={require('../../assets/icon.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>UI-GES</Text>
           <Text style={styles.subtitle}>Computer-Based Testing System</Text>
         </View>
@@ -161,15 +163,6 @@ export default function LoginScreen({ navigation }) {
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
-
-            <View style={styles.demoCredentials}>
-              <Text variant="bodySmall" style={styles.demoText}>
-                Demo Credentials:
-              </Text>
-              <Text variant="bodySmall" style={styles.demoEmail}>
-                candidate@uiges.com / password
-              </Text>
-            </View>
           </Card.Content>
         </Card>
 
@@ -196,23 +189,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#d97706',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 120,
+    height: 120,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
   },
   title: {
     fontSize: 32,
@@ -275,21 +254,6 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 4,
-  },
-  demoCredentials: {
-    marginTop: 24,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    alignItems: 'center',
-  },
-  demoText: {
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  demoEmail: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: '#1e293b',
   },
   footerText: {
     textAlign: 'center',

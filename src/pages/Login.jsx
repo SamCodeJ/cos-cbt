@@ -141,13 +141,6 @@ export default function Login() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <p className="text-xs text-center text-slate-500">
-                Demo Credentials:<br />
-                <span className="font-mono">teacher@uiges.com / password</span>
-              </p>
-            </div>
           </CardContent>
         </Card>
 
