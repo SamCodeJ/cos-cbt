@@ -57,10 +57,26 @@ export default function Results() {
         resultsAPI.list(),
         examAPI.list(),
       ]);
-      setResults(resultsData);
-      setExams(examsData);
+      
+      console.log('Results API Response:', resultsData);
+      console.log('Exams API Response:', examsData);
+      
+      // Handle both array and object responses
+      const resultsArray = Array.isArray(resultsData) ? resultsData : (resultsData.results || []);
+      const examsArray = Array.isArray(examsData) ? examsData : (examsData.exams || []);
+      
+      console.log('Processed Results:', resultsArray);
+      console.log('Processed Exams:', examsArray);
+      
+      setResults(resultsArray);
+      setExams(examsArray);
+      
+      if (resultsArray.length === 0) {
+        console.warn('No results found. Check if candidates have submitted exams.');
+      }
     } catch (error) {
-      toast.error('Failed to load results');
+      console.error('Error loading results:', error);
+      toast.error(`Failed to load results: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +86,14 @@ export default function Results() {
     let filtered = [...results];
 
     if (selectedExam !== 'all') {
-      filtered = filtered.filter(r => r.exam_id === selectedExam);
+      // Convert both to strings for comparison to handle type mismatches
+      filtered = filtered.filter(r => String(r.exam_id) === String(selectedExam));
+      
+      console.log('Filtering by exam:', selectedExam);
+      console.log('Total results:', results.length);
+      console.log('Filtered results:', filtered.length);
+      console.log('Sample result exam_id:', results[0]?.exam_id, 'Type:', typeof results[0]?.exam_id);
+      console.log('Selected exam ID:', selectedExam, 'Type:', typeof selectedExam);
     }
 
     if (searchQuery) {
@@ -126,6 +149,70 @@ export default function Results() {
   const handleViewDetails = async (result) => {
     setSelectedResult(result);
     setDetailsDialogOpen(true);
+  };
+
+  const handleExportCSV = () => {
+    if (filteredResults.length === 0) {
+      toast.error('No results to export');
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Candidate Name',
+      'Email',
+      'Student ID',
+      'Exam Title',
+      'Score (%)',
+      'Correct Answers',
+      'Total Questions',
+      'Status',
+      'Time Taken (minutes)',
+      'Violations',
+      'Submitted At',
+      'Started At'
+    ];
+
+    // Create CSV rows
+    const rows = filteredResults.map(result => {
+      const exam = exams.find(e => String(e.id) === String(result.exam_id));
+      return [
+        result.candidate_name || '',
+        result.candidate_email || '',
+        result.student_id || '',
+        exam?.title || 'N/A',
+        result.score_percentage || 0,
+        result.correct_answers || 0,
+        result.total_questions || 0,
+        result.passed ? 'Passed' : 'Failed',
+        result.time_taken || 0,
+        result.violations_count || 0,
+        result.submitted_at ? new Date(result.submitted_at).toLocaleString() : '',
+        result.started_at ? new Date(result.started_at).toLocaleString() : ''
+      ];
+    });
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const examName = selectedExam !== 'all' 
+      ? exams.find(e => String(e.id) === selectedExam)?.title || 'exam'
+      : 'all-exams';
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.download = `${examName.replace(/\s+/g, '-')}-results-${timestamp}.csv`;
+    
+    link.click();
+    window.URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredResults.length} results to CSV`);
   };
 
   if (isLoading) {
@@ -217,12 +304,20 @@ export default function Results() {
                 <SelectContent>
                   <SelectItem value="all">All Exams</SelectItem>
                   {exams.map(exam => (
-                    <SelectItem key={exam.id} value={exam.id}>
+                    <SelectItem key={exam.id} value={String(exam.id)}>
                       {exam.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                onClick={handleExportCSV}
+                disabled={filteredResults.length === 0}
+                className="w-full md:w-auto"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -251,7 +346,7 @@ export default function Results() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {exams.find(e => e.id === result.exam_id)?.title || 'N/A'}
+                          {exams.find(e => String(e.id) === String(result.exam_id))?.title || 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -318,11 +413,22 @@ export default function Results() {
                 <h3 className="text-lg font-semibold text-slate-600 mb-2">
                   {searchQuery || selectedExam !== 'all' ? 'No results found' : 'No results yet'}
                 </h3>
-                <p className="text-slate-500">
+                <p className="text-slate-500 mb-4">
                   {searchQuery || selectedExam !== 'all'
                     ? 'Try adjusting your search or filter criteria'
-                    : 'Results will appear here once candidates complete their exams'}
+                    : 'Results will appear here once candidates complete and submit their exams'}
                 </p>
+                {results.length === 0 && (
+                  <div className="text-sm text-slate-400 mt-4 p-4 bg-slate-50 rounded-lg inline-block">
+                    <p className="font-medium mb-2">Troubleshooting tips:</p>
+                    <ul className="text-left space-y-1">
+                      <li>• Ensure candidates have completed their exams</li>
+                      <li>• Check that exams are in "active" or "completed" status</li>
+                      <li>• Verify candidates submitted their answers</li>
+                      <li>• Check browser console for any API errors</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -349,7 +455,7 @@ export default function Results() {
                 <div>
                   <Label className="text-sm text-slate-500">Exam</Label>
                   <p className="font-medium">
-                    {exams.find(e => e.id === selectedResult.exam_id)?.title}
+                    {exams.find(e => String(e.id) === String(selectedResult.exam_id))?.title}
                   </p>
                 </div>
                 <div>

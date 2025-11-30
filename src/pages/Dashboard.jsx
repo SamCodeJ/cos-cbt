@@ -82,19 +82,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
               Teacher Dashboard
             </h1>
-            <p className="text-slate-600">
+            <p className="text-sm md:text-base text-slate-600">
               Welcome back! Here's your exam overview.
             </p>
           </div>
-          <Link to="/create-exam">
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white">
+          <Link to="/create-exam" className="w-full md:w-auto">
+            <Button className="bg-amber-600 hover:bg-amber-700 text-white w-full md:w-auto">
               <PlusCircle className="w-5 h-5 mr-2" />
               Create New Exam
             </Button>
@@ -102,26 +102,26 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           <StatCard title="Total Exams" value={stats.totalExams} icon={FileText} color="blue" />
           <StatCard title="Total Candidates" value={stats.totalCandidates} icon={Users} color="green" />
           <StatCard title="Active Tests" value={stats.activeTests} icon={Clock} color="amber" />
           <StatCard title="Pass Rate" value={`${stats.passRate}%`} icon={TrendingUp} color="purple" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           {/* Recent Exams Performance */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b border-slate-200 pb-4">
-              <CardTitle className="text-xl font-bold text-slate-900">Recent Exam Performance</CardTitle>
+              <CardTitle className="text-lg md:text-xl font-bold text-slate-900">Recent Exam Performance</CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Bar dataKey="candidates" fill="#3b82f6" name="Total" />
                     <Bar dataKey="passed" fill="#10b981" name="Passed" />
@@ -129,9 +129,9 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               ) : (
                 <div className="text-center py-8">
-                  <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-600 mb-2">No exams yet</h3>
-                  <p className="text-slate-500 mb-4">Create your first exam to see analytics.</p>
+                  <FileText className="w-12 h-12 md:w-16 md:h-16 mx-auto text-slate-300 mb-4" />
+                  <h3 className="text-base md:text-lg font-semibold text-slate-600 mb-2">No exams yet</h3>
+                  <p className="text-sm text-slate-500 mb-4">Create your first exam to see analytics.</p>
                 </div>
               )}
             </CardContent>
@@ -141,32 +141,32 @@ export default function Dashboard() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b border-slate-200 pb-4">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-xl font-bold text-slate-900">Recent Exams</CardTitle>
+                <CardTitle className="text-lg md:text-xl font-bold text-slate-900">Recent Exams</CardTitle>
                 <Link to="/my-exams">
                   <Button variant="outline" size="sm">View All</Button>
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               {recentExams.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {recentExams.map((exam) => (
                     <div key={exam.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">{exam.title}</h4>
-                        <p className="text-sm text-slate-600">{exam.subject}</p>
+                      <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="font-semibold text-slate-900 text-sm md:text-base truncate">{exam.title}</h4>
+                        <p className="text-xs md:text-sm text-slate-600 truncate">{exam.subject}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {exam.status === 'active' ? (
-                          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded whitespace-nowrap">
                             Active
                           </span>
                         ) : exam.status === 'scheduled' ? (
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded whitespace-nowrap">
                             Scheduled
                           </span>
                         ) : (
-                          <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-800 rounded">
+                          <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-800 rounded whitespace-nowrap">
                             Completed
                           </span>
                         )}
@@ -176,8 +176,8 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                  <p className="text-slate-500">No exams created yet</p>
+                  <FileText className="w-12 h-12 md:w-16 md:h-16 mx-auto text-slate-300 mb-4" />
+                  <p className="text-sm text-slate-500">No exams created yet</p>
                 </div>
               )}
             </CardContent>

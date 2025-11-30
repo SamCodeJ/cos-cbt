@@ -18,6 +18,26 @@ export default defineConfig({
         secure: false,
       }
     }
-  }
+  },
+  build: {
+    // Optimize bundle size
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'charts': ['recharts'],
+          'form': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+        }
+      }
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+  },
+  // Optimize dependencies pre-bundling
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+  },
 })
 

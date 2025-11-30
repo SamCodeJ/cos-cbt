@@ -33,9 +33,12 @@ import {
 function LayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { open } = useSidebar();
+  const { open, isMobile, openMobile } = useSidebar();
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use the correct open state based on device
+  const isOpen = isMobile ? openMobile : open;
 
   useEffect(() => {
     loadCurrentUser();
@@ -126,38 +129,28 @@ function LayoutContent() {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <Sidebar className="border-r border-slate-200 bg-white" collapsible="icon">
-          <SidebarHeader className="border-b border-slate-200 p-6">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/images/logo.svg" 
-                alt="UI-GES Logo" 
-                className="w-10 h-10 object-contain"
-                onError={(e) => {
-                  // Try PNG fallback, then gradient box
-                  if (!e.target.dataset.fallback) {
-                    e.target.dataset.fallback = 'true';
-                    e.target.src = '/images/logo.png';
-                  } else {
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling.style.display = 'flex';
-                  }
-                }}
-              />
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg items-center justify-center hidden">
+          {/* Sidebar Header - Only show on desktop or when mobile sidebar is open */}
+          <SidebarHeader className={`border-b border-slate-200 transition-all duration-300 ${isOpen ? 'p-6' : 'p-3'}`}>
+            <div className={`flex items-center ${isOpen ? 'gap-3' : 'justify-center'}`}>
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-xl">UI</span>
               </div>
-              <div>
-                <h2 className="font-bold text-xl text-slate-900">UI-GES</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Testing System</p>
-              </div>
+              {isOpen && (
+                <div>
+                  <h2 className="font-bold text-xl text-slate-900 whitespace-nowrap">UI-GES</h2>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider whitespace-nowrap">Testing System</p>
+                </div>
+              )}
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="p-4">
+          <SidebarContent className={`transition-all duration-300 ${isOpen ? 'p-4' : 'p-2'}`}>
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
-                Navigation
-              </SidebarGroupLabel>
+              {isOpen && (
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
+                  Navigation
+                </SidebarGroupLabel>
+              )}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {teacherNavigationItems.map((item) => (
@@ -168,9 +161,13 @@ function LayoutContent() {
                           location.pathname === item.url ? 'bg-amber-50 text-amber-900 border-l-2 border-amber-600' : ''
                         }`}
                       >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-3">
-                          <item.icon className="w-5 h-5" />
-                          <span className="font-medium">{item.title}</span>
+                        <Link to={item.url} className={`flex items-center py-3 ${isOpen ? 'gap-3 px-3' : 'justify-center px-0'}`}>
+                          <item.icon className="w-5 h-5 flex-shrink-0" />
+                          {isOpen && (
+                            <span className="font-medium whitespace-nowrap">
+                              {item.title}
+                            </span>
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -181,9 +178,11 @@ function LayoutContent() {
 
             {currentUser?.role === 'admin' && (
               <SidebarGroup className="mt-8">
-                <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
-                  Admin Panel
-                </SidebarGroupLabel>
+                {isOpen && (
+                  <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
+                    Admin Panel
+                  </SidebarGroupLabel>
+                )}
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {adminMenuItems.map((item) => (
@@ -194,9 +193,13 @@ function LayoutContent() {
                             location.pathname === item.url ? 'bg-purple-50 text-purple-900 border-l-2 border-purple-600' : ''
                           }`}
                         >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-3">
-                            <item.icon className="w-5 h-5" />
-                            <span className="font-medium">{item.title}</span>
+                          <Link to={item.url} className={`flex items-center py-3 ${isOpen ? 'gap-3 px-3' : 'justify-center px-0'}`}>
+                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                            {isOpen && (
+                              <span className="font-medium whitespace-nowrap">
+                                {item.title}
+                              </span>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -207,62 +210,64 @@ function LayoutContent() {
             )}
 
             <SidebarGroup className="mt-8">
-              <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
-                Account
-              </SidebarGroupLabel>
+              {isOpen && (
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 py-2">
+                  Account
+                </SidebarGroupLabel>
+              )}
               <SidebarGroupContent>
-                <div className="px-3 py-2 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center">
+                <div className={`py-2 space-y-3 ${isOpen ? 'px-3' : 'flex justify-center'}`}>
+                  <div className={`flex items-center ${isOpen ? 'gap-3' : 'justify-center'}`}>
+                    <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white font-semibold text-sm">
                         {currentUser?.name?.[0]?.toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 text-sm truncate">
-                        {currentUser?.name || 'User'}
-                      </p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {currentUser?.role === 'admin' ? 'Administrator' : 'Teacher'}
-                      </p>
-                    </div>
+                    {isOpen && (
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 text-sm truncate">
+                          {currentUser?.name || 'User'}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {currentUser?.role === 'admin' ? 'Administrator' : 'Teacher'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-slate-200 p-4">
+          <SidebarFooter className={`border-t border-slate-200 transition-all duration-300 ${isOpen ? 'p-4' : 'p-2'}`}>
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full justify-start text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              className={`w-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 ${isOpen ? 'justify-start' : 'justify-center px-0'}`}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
+              <LogOut className={`w-4 h-4 flex-shrink-0 ${isOpen ? 'mr-2' : ''}`} />
+              {isOpen && <span>Sign Out</span>}
             </Button>
           </SidebarFooter>
         </Sidebar>
 
       <div className={`ml-0 transition-[margin] duration-300 ease-in-out ${open ? 'md:ml-64' : 'md:ml-12'}`}>
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 md:hidden">
-          <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
-          <img 
-            src="/images/logo-sm.png" 
-            alt="UI-GES Logo" 
-            className="w-8 h-8 object-contain"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextElementSibling.style.display = 'flex';
-            }}
-          />
-          <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg items-center justify-center hidden">
-            <span className="text-white font-bold text-sm">UI</span>
+        {/* Mobile Header - Higher z-index than sidebar */}
+        <header className="sticky top-0 z-[60] bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 md:hidden shadow-sm">
+          <SidebarTrigger className="flex-shrink-0 hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200 -ml-2" />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">UI</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold text-slate-900 leading-tight">UI-GES</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider leading-tight">Testing System</p>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-slate-900">UI-GES</h1>
         </header>
 
-        <div className="hidden md:flex items-center gap-4 bg-white border-b border-slate-200 px-6 py-3">
+        {/* Desktop Header */}
+        <div className="hidden md:flex items-center gap-4 bg-white border-b border-slate-200 px-6 py-3 sticky top-0 z-40 shadow-sm">
           <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
         </div>
 

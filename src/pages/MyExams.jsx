@@ -183,70 +183,150 @@ export default function MyExams() {
           </CardHeader>
           <CardContent className="p-0">
             {filteredExams.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Questions</TableHead>
-                      <TableHead>Candidates</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Start Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExams.map((exam) => (
-                      <TableRow key={exam.id} className="hover:bg-slate-50">
-                        <TableCell className="font-medium">{exam.title}</TableCell>
-                        <TableCell>{exam.subject}</TableCell>
-                        <TableCell>
-                          {exam.questions_per_candidate} / {exam.total_questions || exam.questions_per_candidate}
-                        </TableCell>
-                        <TableCell>{exam.candidate_count || 0}</TableCell>
-                        <TableCell>{formatDuration(exam.duration)}</TableCell>
-                        <TableCell>{getStatusBadge(exam.status)}</TableCell>
-                        <TableCell>{formatDate(exam.start_date)}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => navigate(`/edit-exam/${exam.id}`)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicate(exam.id)}>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/results?exam=${exam.id}`)}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                View Results
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setExamToDelete(exam);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden p-4 space-y-4">
+                  {filteredExams.map((exam) => (
+                    <div key={exam.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-slate-900 text-base mb-1 truncate">{exam.title}</h3>
+                          <p className="text-sm text-slate-600">{exam.subject}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {getStatusBadge(exam.status)}
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-slate-500">Questions:</span>
+                          <span className="ml-2 font-medium text-slate-900">
+                            {exam.questions_per_candidate} / {exam.total_questions || exam.questions_per_candidate}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Candidates:</span>
+                          <span className="ml-2 font-medium text-slate-900">{exam.candidate_count || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Duration:</span>
+                          <span className="ml-2 font-medium text-slate-900">{formatDuration(exam.duration)}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Start:</span>
+                          <span className="ml-2 font-medium text-slate-900">{formatDate(exam.start_date)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-slate-200">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/edit-exam/${exam.id}`)}
+                          className="flex-1"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleDuplicate(exam.id)}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/results?exam=${exam.id}`)}>
+                              <FileText className="w-4 h-4 mr-2" />
+                              View Results
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setExamToDelete(exam);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Questions</TableHead>
+                        <TableHead>Candidates</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExams.map((exam) => (
+                        <TableRow key={exam.id} className="hover:bg-slate-50">
+                          <TableCell className="font-medium">{exam.title}</TableCell>
+                          <TableCell>{exam.subject}</TableCell>
+                          <TableCell>
+                            {exam.questions_per_candidate} / {exam.total_questions || exam.questions_per_candidate}
+                          </TableCell>
+                          <TableCell>{exam.candidate_count || 0}</TableCell>
+                          <TableCell>{formatDuration(exam.duration)}</TableCell>
+                          <TableCell>{getStatusBadge(exam.status)}</TableCell>
+                          <TableCell>{formatDate(exam.start_date)}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate(`/edit-exam/${exam.id}`)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(exam.id)}>
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/results?exam=${exam.id}`)}>
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  View Results
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setExamToDelete(exam);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             ) : (
               <div className="text-center py-16">
                 <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />

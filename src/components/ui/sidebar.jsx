@@ -26,17 +26,31 @@ export function useSidebar() {
 export function SidebarProvider({ defaultOpen = true, children }) {
   const [open, setOpen] = React.useState(defaultOpen)
   const [openMobile, setOpenMobile] = React.useState(false)
-  const [isMobile, setIsMobile] = React.useState(false)
+  const [isMobile, setIsMobile] = React.useState(() => {
+    // Initialize with correct value
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768
+    }
+    return false
+  })
 
   React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+    }
+    
     checkMobile()
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    if (isMobile) {
+      setOpenMobile((prev) => !prev)
+    } else {
+      setOpen((prev) => !prev)
+    }
   }, [isMobile])
 
   const value = React.useMemo(
@@ -59,28 +73,28 @@ export function SidebarProvider({ defaultOpen = true, children }) {
 }
 
 export const Sidebar = React.forwardRef(({ className, children, ...props }, ref) => {
-  const { open, openMobile, isMobile } = useSidebar()
+  const { open, openMobile, isMobile, setOpenMobile } = useSidebar()
 
   return (
     <>
       {isMobile && openMobile && (
         <div
-          className="fixed inset-0 z-40 bg-black/50"
-          onClick={() => useSidebar().setOpenMobile(false)}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          onClick={() => setOpenMobile(false)}
         />
       )}
       <aside
         ref={ref}
         data-state={isMobile ? (openMobile ? "open" : "closed") : (open ? "open" : "closed")}
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-full flex-col border-r bg-sidebar transition-all duration-300 ease-in-out",
+          "fixed top-0 left-0 z-50 flex h-full flex-col border-r bg-white transition-all duration-300 ease-in-out",
           isMobile
             ? openMobile
-              ? `translate-x-0 w-[${SIDEBAR_WIDTH_MOBILE}]`
+              ? "translate-x-0"
               : "-translate-x-full"
             : open
-            ? `w-[${SIDEBAR_WIDTH}]`
-            : `w-[${SIDEBAR_WIDTH_ICON}]`,
+            ? ""
+            : "",
           className
         )}
         style={{
@@ -167,10 +181,10 @@ export const SidebarTrigger = React.forwardRef(({ className, ...props }, ref) =>
       variant="ghost"
       size="icon"
       onClick={toggleSidebar}
-      className={cn("", className)}
+      className={cn("shrink-0", className)}
       {...props}
     >
-      <PanelLeft className="h-4 w-4" />
+      <PanelLeft className="h-5 w-5" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
