@@ -27,7 +27,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Download, Search, FileText, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { BarChart3, Download, Search, FileText, CheckCircle, XCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate, formatDateTime, formatDuration } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -42,6 +43,8 @@ export default function Results() {
   const [isLoading, setIsLoading] = useState(true);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -49,6 +52,7 @@ export default function Results() {
 
   useEffect(() => {
     filterResults();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [selectedExam, searchQuery, results]);
 
   const loadData = async () => {
@@ -149,6 +153,141 @@ export default function Results() {
   const handleViewDetails = async (result) => {
     setSelectedResult(result);
     setDetailsDialogOpen(true);
+  };
+
+  // Pagination helpers
+  const getPaginatedItems = (items, page, itemsPerPage) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (items, itemsPerPage) => {
+    return Math.ceil(items.length / itemsPerPage);
+  };
+
+  const handleItemsPerPageChange = (newPerPage) => {
+    setItemsPerPage(newPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Paginated data
+  const paginatedResults = getPaginatedItems(filteredResults, currentPage, itemsPerPage);
+  const totalPages = getTotalPages(filteredResults, itemsPerPage);
+
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
+    const totalItems = filteredResults.length;
+    
+    if (totalItems === 0) return null;
+
+    const pages = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    const startItem = ((currentPage - 1) * itemsPerPage) + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-600">
+            Showing {startItem} to {endItem} of {totalItems} results
+          </div>
+          
+          {/* Length Menu */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="results-per-page" className="text-sm text-slate-600">
+              Show:
+            </Label>
+            <select
+              id="results-per-page"
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="h-8 rounded-md border border-slate-300 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          {startPage > 1 && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(1)}
+              >
+                1
+              </Button>
+              {startPage > 2 && <span className="px-2 py-1">...</span>}
+            </>
+          )}
+          
+          {pages.map(page => (
+            <Button
+              key={page}
+              type="button"
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={currentPage === page ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {page}
+            </Button>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 py-1">...</span>}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(totalPages)}
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const handleExportCSV = () => {
@@ -322,91 +461,104 @@ export default function Results() {
           </CardHeader>
           <CardContent className="p-0">
             {filteredResults.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Candidate</TableHead>
-                      <TableHead>Exam</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Time Taken</TableHead>
-                      <TableHead>Violations</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredResults.map((result) => (
-                      <TableRow key={result.id} className="hover:bg-slate-50">
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{result.candidate_name}</div>
-                            <div className="text-sm text-slate-500">{result.candidate_email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {exams.find(e => String(e.id) === String(result.exam_id))?.title || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-semibold">{result.score_percentage}%</div>
-                            <div className="text-xs text-slate-500">
-                              {result.correct_answers}/{result.total_questions} correct
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {result.passed ? (
-                            <Badge variant="success" className="flex items-center gap-1 w-fit">
-                              <CheckCircle className="w-3 h-3" />
-                              Passed
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                              <XCircle className="w-3 h-3" />
-                              Failed
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatDuration(result.time_taken)}</TableCell>
-                        <TableCell>
-                          {result.violations_count > 0 ? (
-                            <Badge variant="warning" className="flex items-center gap-1 w-fit">
-                              <AlertTriangle className="w-3 h-3" />
-                              {result.violations_count}
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-500">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {formatDateTime(result.submitted_at)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewDetails(result)}
-                            >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Details
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadTranscript(result.id)}
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">S/N</TableHead>
+                        <TableHead>Candidate</TableHead>
+                        <TableHead>Exam</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Time Taken</TableHead>
+                        <TableHead>Violations</TableHead>
+                        <TableHead>Submitted</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedResults.map((result, index) => (
+                        <TableRow key={result.id} className="hover:bg-slate-50">
+                          <TableCell className="text-slate-500">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{result.candidate_name}</div>
+                              <div className="text-sm text-slate-500">{result.candidate_email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {exams.find(e => String(e.id) === String(result.exam_id))?.title || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-semibold">{result.score_percentage}%</div>
+                              <div className="text-xs text-slate-500">
+                                {result.correct_answers}/{result.total_questions} correct
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {result.passed ? (
+                              <Badge variant="success" className="flex items-center gap-1 w-fit">
+                                <CheckCircle className="w-3 h-3" />
+                                Passed
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                                <XCircle className="w-3 h-3" />
+                                Failed
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatDuration(result.time_taken)}</TableCell>
+                          <TableCell>
+                            {result.violations_count > 0 ? (
+                              <Badge variant="warning" className="flex items-center gap-1 w-fit">
+                                <AlertTriangle className="w-3 h-3" />
+                                {result.violations_count}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-500">None</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {formatDateTime(result.submitted_at)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetails(result)}
+                              >
+                                <FileText className="w-4 h-4 mr-1" />
+                                Details
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadTranscript(result.id)}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              </>
             ) : (
               <div className="text-center py-16">
                 <BarChart3 className="w-16 h-16 mx-auto text-slate-300 mb-4" />
@@ -448,18 +600,18 @@ export default function Results() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm text-slate-500">Candidate</Label>
+                  <ResultLabel className="text-sm text-slate-500">Candidate</ResultLabel>
                   <p className="font-medium">{selectedResult.candidate_name}</p>
                   <p className="text-sm text-slate-500">{selectedResult.candidate_email}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-slate-500">Exam</Label>
+                  <ResultLabel className="text-sm text-slate-500">Exam</ResultLabel>
                   <p className="font-medium">
                     {exams.find(e => String(e.id) === String(selectedResult.exam_id))?.title}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm text-slate-500">Score</Label>
+                  <ResultLabel className="text-sm text-slate-500">Score</ResultLabel>
                   <p className="text-2xl font-bold text-amber-600">
                     {selectedResult.score_percentage}%
                   </p>
@@ -468,7 +620,7 @@ export default function Results() {
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm text-slate-500">Status</Label>
+                  <ResultLabel className="text-sm text-slate-500">Status</ResultLabel>
                   <div className="mt-1">
                     {selectedResult.passed ? (
                       <Badge variant="success">Passed</Badge>
@@ -478,18 +630,18 @@ export default function Results() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm text-slate-500">Time Taken</Label>
+                  <ResultLabel className="text-sm text-slate-500">Time Taken</ResultLabel>
                   <p className="font-medium">{formatDuration(selectedResult.time_taken)}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-slate-500">Violations</Label>
+                  <ResultLabel className="text-sm text-slate-500">Violations</ResultLabel>
                   <p className="font-medium">{selectedResult.violations_count || 0}</p>
                 </div>
               </div>
 
               {selectedResult.violations_count > 0 && selectedResult.violations && (
                 <div>
-                  <Label className="text-sm font-semibold">Violation Log</Label>
+                  <ResultLabel className="text-sm font-semibold">Violation Log</ResultLabel>
                   <div className="mt-2 space-y-2">
                     {selectedResult.violations.map((violation, idx) => (
                       <div key={idx} className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -519,7 +671,7 @@ export default function Results() {
   );
 }
 
-function Label({ children, className = '' }) {
+function ResultLabel({ children, className = '' }) {
   return <div className={`text-sm font-medium ${className}`}>{children}</div>;
 }
 

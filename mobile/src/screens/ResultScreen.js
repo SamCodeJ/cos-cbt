@@ -3,10 +3,14 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button, List, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI } from '../api/client';
+import RenderHTML from 'react-native-render-html';
+import { useAuthStore } from '../store/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ResultScreen({ route, navigation }) {
   const { examId } = route.params;
   const insets = useSafeAreaInsets();
+  const { logout } = useAuthStore();
   
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -189,7 +193,20 @@ export default function ResultScreen({ route, navigation }) {
                       <Text style={styles.incorrectBadge}>✗ Incorrect</Text>
                     )}
                   </View>
-                  <Text style={styles.reviewQuestion}>{answer.question_text}</Text>
+                  <RenderHTML
+                    contentWidth={300}
+                    source={{ html: answer.question_text }}
+                    baseStyle={styles.reviewQuestion}
+                    tagsStyles={{
+                      sub: { fontSize: 10, lineHeight: 14 },
+                      sup: { fontSize: 10, lineHeight: 14 },
+                      strong: { fontWeight: 'bold' },
+                      b: { fontWeight: 'bold' },
+                      em: { fontStyle: 'italic' },
+                      i: { fontStyle: 'italic' },
+                      u: { textDecorationLine: 'underline' }
+                    }}
+                  />
                   <View style={styles.reviewAnswers}>
                     <Text style={styles.reviewAnswer}>
                       Your answer: <Text style={styles.reviewAnswerValue}>{answer.your_answer || 'Not answered'}</Text>
@@ -238,10 +255,11 @@ export default function ResultScreen({ route, navigation }) {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button
           mode="contained"
-          onPress={() => navigation.navigate('Dashboard')}
+          onPress={handleReturnToLogin}
           style={styles.dashboardButton}
+          icon="login"
         >
-          Back to Dashboard
+          Return to Login
         </Button>
       </View>
     </View>

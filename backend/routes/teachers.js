@@ -271,7 +271,7 @@ router.put('/candidates/:id', async (req, res) => {
 
     // Check if candidate exists
     const existingCandidate = await db.query(
-      'SELECT id, email FROM users WHERE id = $1 AND role = \'candidate\'',
+      'SELECT id, email, student_id FROM users WHERE id = $1 AND role = \'candidate\'',
       [id]
     );
 
@@ -289,6 +289,11 @@ router.put('/candidates/:id', async (req, res) => {
       if (emailCheck.rows.length > 0) {
         return res.status(409).json({ error: 'Email already exists' });
       }
+    }
+
+    // Validate student_id is provided (cannot be empty for candidates)
+    if (student_id !== undefined && (!student_id || student_id.trim() === '')) {
+      return res.status(400).json({ error: 'Student ID cannot be empty' });
     }
 
     let updateQuery = 'UPDATE users SET ';

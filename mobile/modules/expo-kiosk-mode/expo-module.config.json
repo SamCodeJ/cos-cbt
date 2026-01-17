@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "ios"],
+  "android": {
+    "modules": ["expo.modules.kioskmode.ExpoKioskModeModule"]
+  },
+  "ios": {
+    "modules": []
+  }
+}

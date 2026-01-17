@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Save, Upload, Plus, X, Loader2, Download, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Save, Upload, Plus, X, Loader2, Download, Trash2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const examSchema = z.object({
@@ -78,6 +78,7 @@ export default function CreateExam() {
   const randomizeQuestions = watch('randomize_questions');
   const randomizeOptions = watch('randomize_options');
   const enforceScreenLock = watch('enforce_screen_lock');
+  const questionsPerCandidate = watch('questions_per_candidate');
 
   useEffect(() => {
     if (id) {
@@ -117,6 +118,17 @@ export default function CreateExam() {
       setCandidates(candidatesData);
       setOriginalCandidates(candidatesData); // Store original for comparison on save
       setQuestions(questionsData);
+
+      // Load section distribution settings if available
+      if (exam.enable_section_distribution) {
+        setEnableSectionDistribution(true);
+        if (exam.section_distribution && Object.keys(exam.section_distribution).length > 0) {
+          setSectionDistribution(exam.section_distribution);
+        } else {
+          // Auto-populate if distribution is empty
+          setTimeout(() => populateAutoDistribution(), 200);
+        }
+      }
     } catch (error) {
       toast.error('Failed to load exam');
       navigate('/my-exams');
@@ -144,6 +156,27 @@ export default function CreateExam() {
       return;
     }
 
+    // Validate section distribution if enabled
+    if (enableSectionDistribution) {
+      const sectionStats = getSectionStats();
+      const totalToSelect = Object.values(sectionStats).reduce((sum, s) => sum + s.questionsToSelect, 0);
+      
+      if (totalToSelect !== data.questions_per_candidate) {
+        toast.error(`Section distribution total (${totalToSelect}) must equal questions per candidate (${data.questions_per_candidate})`);
+        setActiveTab('settings');
+        return;
+      }
+
+      // Check if any section has more questions to select than available
+      for (const [sectionName, section] of Object.entries(sectionStats)) {
+        if (section.questionsToSelect > section.totalQuestions) {
+          toast.error(`Section "${sectionName}" cannot select ${section.questionsToSelect} questions (only ${section.totalQuestions} available)`);
+          setActiveTab('settings');
+          return;
+        }
+      }
+    }
+
     setIsSaving(true);
     try {
       let examId = id;
@@ -162,6 +195,8 @@ export default function CreateExam() {
         ...data,
         start_date: formatDateForBackend(data.start_date),
         end_date: formatDateForBackend(data.end_date),
+        enable_section_distribution: enableSectionDistribution,
+        section_distribution: enableSectionDistribution ? sectionDistribution : null,
       };
 
       if (id) {
@@ -319,10 +354,18 @@ export default function CreateExam() {
     option_d: '',
     correct_answer: 'A',
     points: 1,
+    is_multi_answer: false,
+    section_id: '',
+    instruction: '',
+    passage: '',
   });
   const [selectedQuestions, setSelectedQuestions] = useState(new Set());
   const [questionPage, setQuestionPage] = useState(1);
   const [questionsPerPage, setQuestionsPerPage] = useState(10);
+  
+  // Section-based distribution settings
+  const [enableSectionDistribution, setEnableSectionDistribution] = useState(false);
+  const [sectionDistribution, setSectionDistribution] = useState({});
 
   const addQuestion = () => {
     if (!newQuestion.question_text || !newQuestion.option_a || !newQuestion.option_b) {
@@ -339,6 +382,10 @@ export default function CreateExam() {
       option_d: '',
       correct_answer: 'A',
       points: 1,
+      is_multi_answer: false,
+      section_id: '',
+      instruction: '',
+      passage: '',
     });
   };
 
@@ -529,41 +576,117 @@ export default function CreateExam() {
     );
   };
 
-  const handleQuestionCSV = (e) => {
+  const handleQuestionUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const csv = event.target.result;
-        const lines = csv.split('\n');
-        const newQuestions = lines.slice(1).map((line, index) => {
-          const [question_text, option_a, option_b, option_c, option_d, correct_answer, points] = 
-            line.split(',').map(s => s.trim());
-          
-          if (question_text && option_a && option_b) {
-            return {
-              id: Date.now() + index,
-              question_text,
-              option_a,
-              option_b,
-              option_c: option_c || '',
-              option_d: option_d || '',
-              correct_answer: correct_answer || 'A',
-              points: parseInt(points) || 1,
-            };
-          }
-          return null;
-        }).filter(Boolean);
+    // Check file type
+    const isDocx = file.name.toLowerCase().endsWith('.docx');
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
 
-        setQuestions([...questions, ...newQuestions]);
-        toast.success(`Added ${newQuestions.length} questions`);
+    if (isDocx) {
+      // Handle Word document upload via backend
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/question-bank/preview-word', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to parse Word document');
+        }
+
+        const data = await response.json();
+        
+        if (data.questions && data.questions.length > 0) {
+          const newQuestions = data.questions.map((q, index) => ({
+            id: Date.now() + index,
+            question_text: q.question_text,
+            option_a: q.options?.A || '',
+            option_b: q.options?.B || '',
+            option_c: q.options?.C || '',
+            option_d: q.options?.D || '',
+            correct_answer: q.correct_answer || 'A',
+            points: 1,
+            is_multi_answer: q.is_multi_answer || false,
+            section_id: q.section_id || '',
+            instruction: q.instruction || '',
+            passage: q.passage || '',
+          }));
+
+          setQuestions([...questions, ...newQuestions]);
+          toast.success(`Added ${newQuestions.length} questions from Word document`);
+          
+          if (data.parseErrors && data.parseErrors.length > 0) {
+            toast.warning(`${data.parseErrors.length} warning(s) during parsing`);
+          }
+        } else {
+          toast.error('No valid questions found in the document');
+        }
       } catch (error) {
-        toast.error('Failed to parse CSV file');
+        console.error('Word upload error:', error);
+        toast.error(error.message || 'Failed to parse Word document');
       }
-    };
-    reader.readAsText(file);
+    } else if (isCsv) {
+      // Handle CSV file (legacy support)
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const csv = event.target.result;
+          const lines = csv.split('\n');
+          const newQuestions = lines.slice(1).map((line, index) => {
+            const fields = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let char of line) {
+              if (char === '"') {
+                inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) {
+                fields.push(current.trim());
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            fields.push(current.trim());
+            
+            const [question_text, option_a, option_b, option_c, option_d, correct_answer, points, is_multi_answer] = fields;
+            
+            if (question_text && option_a && option_b) {
+              return {
+                id: Date.now() + index,
+                question_text,
+                option_a,
+                option_b,
+                option_c: option_c || '',
+                option_d: option_d || '',
+                correct_answer: correct_answer || 'A',
+                points: parseInt(points) || 1,
+                is_multi_answer: is_multi_answer?.toLowerCase() === 'true',
+              };
+            }
+            return null;
+          }).filter(Boolean);
+
+          setQuestions([...questions, ...newQuestions]);
+          toast.success(`Added ${newQuestions.length} questions from CSV`);
+        } catch (error) {
+          toast.error('Failed to parse CSV file');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      toast.error('Please upload a .docx or .csv file');
+    }
+    
     e.target.value = '';
   };
 
@@ -577,14 +700,93 @@ export default function CreateExam() {
     a.click();
   };
 
-  const downloadQuestionTemplate = () => {
-    const csv = 'question_text,option_a,option_b,option_c,option_d,correct_answer,points\nWhat is 2+2?,3,4,5,6,B,1';
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'questions_template.csv';
-    a.click();
+  const downloadQuestionTemplate = async () => {
+    try {
+      const response = await fetch('/api/question-bank/template', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to download template');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'questions_template.docx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Template download error:', error);
+      toast.error('Failed to download template');
+    }
+  };
+
+  // Calculate section statistics and distribution
+  const getSectionStats = () => {
+    const sections = {};
+    
+    questions.forEach(q => {
+      const sectionName = q.section_id || 'Unsectioned';
+      if (!sections[sectionName]) {
+        sections[sectionName] = {
+          name: sectionName,
+          totalQuestions: 0,
+          questionsToSelect: 0,
+        };
+      }
+      sections[sectionName].totalQuestions++;
+    });
+    
+    // Calculate automatic even distribution
+    const sectionNames = Object.keys(sections);
+    const numSections = sectionNames.length;
+    const targetQuestionsPerCandidate = questionsPerCandidate || 0;
+    
+    if (numSections > 0 && targetQuestionsPerCandidate > 0) {
+      const baseQuestionsPerSection = Math.floor(targetQuestionsPerCandidate / numSections);
+      const remainder = targetQuestionsPerCandidate % numSections;
+      
+      sectionNames.forEach((sectionName, index) => {
+        // Distribute remainder to first few sections
+        const autoDistribution = baseQuestionsPerSection + (index < remainder ? 1 : 0);
+        sections[sectionName].questionsToSelect = 
+          sectionDistribution[sectionName] !== undefined 
+            ? sectionDistribution[sectionName] 
+            : autoDistribution;
+      });
+    }
+    
+    return sections;
+  };
+
+  // Update section distribution
+  const updateSectionDistribution = (sectionName, value) => {
+    setSectionDistribution(prev => ({
+      ...prev,
+      [sectionName]: parseInt(value) || 0,
+    }));
+  };
+
+  // Reset to automatic distribution
+  const resetToAutoDistribution = () => {
+    setSectionDistribution({});
+    toast.success('Reset to automatic distribution');
+  };
+
+  // Populate section distribution with automatic values when enabled
+  const populateAutoDistribution = () => {
+    const sectionStats = getSectionStats();
+    const autoDistribution = {};
+    
+    Object.entries(sectionStats).forEach(([sectionName, stats]) => {
+      autoDistribution[sectionName] = stats.questionsToSelect;
+    });
+    
+    setSectionDistribution(autoDistribution);
   };
 
   if (isLoading) {
@@ -678,7 +880,7 @@ export default function CreateExam() {
                         <p className="text-sm text-red-500">{errors.questions_per_candidate.message}</p>
                       )}
                       <p className="text-xs text-slate-500">
-                        Each candidate will receive this many random questions from the question bank
+                        Each candidate will receive this many random questions. Configure section-based distribution in Settings tab.
                       </p>
                     </div>
 
@@ -766,7 +968,7 @@ export default function CreateExam() {
                         <Button type="button" variant="outline" size="sm" asChild>
                           <span>
                             <Upload className="w-4 h-4 mr-2" />
-                            Upload CSV
+                            Upload File
                           </span>
                         </Button>
                         <input
@@ -833,6 +1035,7 @@ export default function CreateExam() {
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-16">S/N</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Student ID</TableHead>
@@ -841,8 +1044,11 @@ export default function CreateExam() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedCandidates.map((candidate) => (
+                          {paginatedCandidates.map((candidate, index) => (
                           <TableRow key={candidate.id}>
+                            <TableCell className="text-slate-500">
+                              {(candidatePage - 1) * candidatesPerPage + index + 1}
+                            </TableCell>
                             <TableCell>{candidate.name}</TableCell>
                             <TableCell>{candidate.email}</TableCell>
                             <TableCell>{candidate.student_id || '-'}</TableCell>
@@ -912,19 +1118,49 @@ export default function CreateExam() {
                         </Button>
                         <input
                           type="file"
-                          accept=".csv"
+                          accept=".docx,.csv"
                           className="hidden"
-                          onChange={handleQuestionCSV}
+                          onChange={handleQuestionUpload}
                         />
                       </label>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Info Banner about Sections */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex gap-2">
+                      <span className="text-blue-600 text-sm">💡</span>
+                      <div className="text-sm text-blue-800">
+                        <strong>Tip:</strong> Use <strong>Section Names</strong> to group questions by topic. 
+                        You can then configure how many questions from each section students should answer in the <strong>Settings</strong> tab.
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Add Question Form */}
                   <div className="p-4 border border-slate-200 rounded-lg space-y-4">
                     <h4 className="font-semibold text-slate-900">Add New Question</h4>
                     <div className="space-y-3">
+                      {/* Optional Section, Instruction, Passage Fields */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input
+                          placeholder="Section Name (e.g., Algebra, Grammar, etc.)"
+                          value={newQuestion.section_id}
+                          onChange={(e) => setNewQuestion({ ...newQuestion, section_id: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Instruction (optional)"
+                          value={newQuestion.instruction}
+                          onChange={(e) => setNewQuestion({ ...newQuestion, instruction: e.target.value })}
+                        />
+                      </div>
+                      <textarea
+                        placeholder="Passage (optional) - Reading comprehension text for this question"
+                        className="w-full min-h-[80px] rounded-md border border-input px-3 py-2 text-sm resize-y"
+                        value={newQuestion.passage}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, passage: e.target.value })}
+                      />
                       <Input
                         placeholder="Question Text"
                         value={newQuestion.question_text}
@@ -952,19 +1188,70 @@ export default function CreateExam() {
                           onChange={(e) => setNewQuestion({ ...newQuestion, option_d: e.target.value })}
                         />
                       </div>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Checkbox
+                          id="multi-answer-new"
+                          checked={newQuestion.is_multi_answer}
+                          onCheckedChange={(checked) => {
+                            setNewQuestion({
+                              ...newQuestion,
+                              is_multi_answer: checked,
+                              correct_answer: checked ? newQuestion.correct_answer : newQuestion.correct_answer.split(',')[0] || 'A'
+                            });
+                          }}
+                        />
+                        <Label htmlFor="multi-answer-new" className="text-sm font-normal cursor-pointer">
+                          Multiple correct answers
+                        </Label>
+                      </div>
                       <div className="flex gap-4">
                         <div className="flex-1">
-                          <Label className="text-sm">Correct Answer</Label>
-                          <select
-                            className="w-full h-9 rounded-md border border-input px-3 py-1"
-                            value={newQuestion.correct_answer}
-                            onChange={(e) => setNewQuestion({ ...newQuestion, correct_answer: e.target.value })}
-                          >
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                          </select>
+                          <Label className="text-sm">Correct Answer{newQuestion.is_multi_answer ? 's' : ''}</Label>
+                          {newQuestion.is_multi_answer ? (
+                            <div className="space-y-2 p-3 border rounded-md">
+                              {['A', 'B', 'C', 'D'].map(option => {
+                                const isDisabled = option === 'C' && !newQuestion.option_c || option === 'D' && !newQuestion.option_d;
+                                const answers = newQuestion.correct_answer.split(',');
+                                return (
+                                  <div key={option} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`correct-${option}-new`}
+                                      checked={answers.includes(option)}
+                                      disabled={isDisabled}
+                                      onCheckedChange={() => {
+                                        const currentAnswers = newQuestion.correct_answer.split(',').filter(a => a);
+                                        let newAnswers;
+                                        if (currentAnswers.includes(option)) {
+                                          newAnswers = currentAnswers.filter(a => a !== option);
+                                        } else {
+                                          newAnswers = [...currentAnswers, option];
+                                        }
+                                        const sortedAnswers = newAnswers.sort().join(',');
+                                        setNewQuestion({ ...newQuestion, correct_answer: sortedAnswers || 'A' });
+                                      }}
+                                    />
+                                    <Label htmlFor={`correct-${option}-new`} className="text-sm font-normal cursor-pointer">
+                                      {option} {isDisabled && '(not provided)'}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                              <p className="text-xs text-slate-500 mt-2">
+                                Selected: {newQuestion.correct_answer || 'None'}
+                              </p>
+                            </div>
+                          ) : (
+                            <select
+                              className="w-full h-9 rounded-md border border-input px-3 py-1"
+                              value={newQuestion.correct_answer}
+                              onChange={(e) => setNewQuestion({ ...newQuestion, correct_answer: e.target.value })}
+                            >
+                              <option value="A">A</option>
+                              <option value="B">B</option>
+                              <option value="C">C</option>
+                              <option value="D">D</option>
+                            </select>
+                          )}
                         </div>
                         <div className="flex-1">
                           <Label className="text-sm">Points</Label>
@@ -1020,39 +1307,85 @@ export default function CreateExam() {
                       {/* Questions */}
                       {paginatedQuestions.map((question, index) => {
                         const actualIndex = (questionPage - 1) * questionsPerPage + index;
+                        const prevQuestion = index > 0 ? paginatedQuestions[index - 1] : null;
+                        const showSectionHeader = question.section_id && 
+                          (!prevQuestion || prevQuestion.section_id !== question.section_id);
+                        
                         return (
-                          <div key={question.id} className="p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <div className="flex gap-3 items-start">
-                              <Checkbox
-                                id={`question-${question.id}`}
-                                checked={selectedQuestions.has(question.id)}
-                                onCheckedChange={() => toggleQuestionSelect(question.id)}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                <h4 className="font-medium text-slate-900 mb-2">
-                                  {actualIndex + 1}. {question.question_text}
-                              </h4>
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>A: {question.option_a}</div>
-                                <div>B: {question.option_b}</div>
-                                {question.option_c && <div>C: {question.option_c}</div>}
-                                {question.option_d && <div>D: {question.option_d}</div>}
+                          <div key={question.id}>
+                            {/* Section Header */}
+                            {showSectionHeader && (
+                              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <h3 className="font-semibold text-amber-800 text-lg">
+                                  📚 Section: {question.section_id}
+                                </h3>
+                                {question.instruction && (
+                                  <p className="mt-1 text-sm text-amber-700">
+                                    <span className="font-medium">Instructions:</span> {question.instruction}
+                                  </p>
+                                )}
                               </div>
-                              <div className="mt-2 text-sm text-amber-600 font-medium">
-                                Correct Answer: {question.correct_answer} | Points: {question.points}
+                            )}
+                            
+                            <div className="p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+                              <div className="flex gap-3 items-start">
+                                <Checkbox
+                                  id={`question-${question.id}`}
+                                  checked={selectedQuestions.has(question.id)}
+                                  onCheckedChange={() => toggleQuestionSelect(question.id)}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1">
+                                  {/* Passage */}
+                                  {question.passage && (
+                                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <p className="text-sm font-medium text-blue-800 mb-1">📖 Passage:</p>
+                                      <p className="text-sm text-blue-900 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: question.passage }} />
+                                    </div>
+                                  )}
+                                  
+                                  <h4 className="font-medium text-slate-900 mb-2">
+                                    <span>{actualIndex + 1}. </span>
+                                    <span dangerouslySetInnerHTML={{ __html: question.question_text }} />
+                                    {question.is_multi_answer && (
+                                      <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                        Multi-Answer
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className={question.correct_answer?.includes('A') ? 'text-green-600 font-medium' : ''}>
+                                      A: <span dangerouslySetInnerHTML={{ __html: question.option_a }} />
+                                    </div>
+                                    <div className={question.correct_answer?.includes('B') ? 'text-green-600 font-medium' : ''}>
+                                      B: <span dangerouslySetInnerHTML={{ __html: question.option_b }} />
+                                    </div>
+                                    {question.option_c && (
+                                      <div className={question.correct_answer?.includes('C') ? 'text-green-600 font-medium' : ''}>
+                                        C: <span dangerouslySetInnerHTML={{ __html: question.option_c }} />
+                                      </div>
+                                    )}
+                                    {question.option_d && (
+                                      <div className={question.correct_answer?.includes('D') ? 'text-green-600 font-medium' : ''}>
+                                        D: <span dangerouslySetInnerHTML={{ __html: question.option_d }} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-2 text-sm text-amber-600 font-medium">
+                                    Correct Answer: {question.correct_answer} | Points: {question.points}
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeQuestion(question.id)}
+                                >
+                                  <X className="w-4 h-4 text-red-500" />
+                                </Button>
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeQuestion(question.id)}
-                            >
-                              <X className="w-4 h-4 text-red-500" />
-                            </Button>
                           </div>
-                        </div>
                         );
                       })}
                       
@@ -1137,6 +1470,151 @@ export default function CreateExam() {
                       checked={enforceScreenLock}
                       onCheckedChange={(checked) => setValue('enforce_screen_lock', checked)}
                     />
+                  </div>
+
+                  {/* Section-Based Question Distribution */}
+                  <div className="pt-6 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="enable_section_distribution">Section-Based Question Distribution</Label>
+                        <p className="text-sm text-slate-500">
+                          Distribute questions evenly across sections for each student
+                        </p>
+                      </div>
+                      <Switch
+                        id="enable_section_distribution"
+                        checked={enableSectionDistribution}
+                        onCheckedChange={(checked) => {
+                          setEnableSectionDistribution(checked);
+                          // Auto-populate distribution when enabling (if not already set)
+                          if (checked && Object.keys(sectionDistribution).length === 0) {
+                            // Use setTimeout to ensure questions are loaded
+                            setTimeout(() => populateAutoDistribution(), 100);
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {enableSectionDistribution && (() => {
+                      const sectionStats = getSectionStats();
+                      const sectionNames = Object.keys(sectionStats);
+                      const totalToSelect = Object.values(sectionStats).reduce((sum, s) => sum + s.questionsToSelect, 0);
+                      const hasValidDistribution = totalToSelect === (questionsPerCandidate || 0);
+
+                      if (sectionNames.length === 0) {
+                        return (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800">
+                              ⚠️ No questions added yet. Add questions with section IDs to configure distribution.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Distribution Summary */}
+                          <div className={`p-4 rounded-lg border ${
+                            hasValidDistribution 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-amber-50 border-amber-200'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {hasValidDistribution ? '✅' : '⚠️'} Distribution Summary
+                                </p>
+                                <p className="text-sm mt-1">
+                                  Total to select: <strong>{totalToSelect}</strong> / Target: <strong>{questionsPerCandidate || 0}</strong>
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={resetToAutoDistribution}
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Reset to Auto
+                              </Button>
+                            </div>
+                            {!hasValidDistribution && (
+                              <p className="text-xs text-amber-700 mt-2">
+                                Adjust the distribution so the total matches the target questions per candidate.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Section Distribution Table */}
+                          <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Section</TableHead>
+                                  <TableHead className="text-center">Total Questions in Bank</TableHead>
+                                  <TableHead className="text-center">Questions to Select per Student</TableHead>
+                                  <TableHead className="text-center">% of Exam</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {sectionNames.map(sectionName => {
+                                  const section = sectionStats[sectionName];
+                                  const percentage = questionsPerCandidate > 0 
+                                    ? ((section.questionsToSelect / questionsPerCandidate) * 100).toFixed(1)
+                                    : 0;
+                                  const isOverLimit = section.questionsToSelect > section.totalQuestions;
+
+                                  return (
+                                    <TableRow key={sectionName}>
+                                      <TableCell className="font-medium">
+                                        {section.name === 'Unsectioned' ? (
+                                          <span className="text-slate-500 italic">{section.name}</span>
+                                        ) : (
+                                          <span>📚 {section.name}</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-center">
+                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-sm font-medium">
+                                          {section.totalQuestions}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max={section.totalQuestions}
+                                            value={section.questionsToSelect}
+                                            onChange={(e) => updateSectionDistribution(sectionName, e.target.value)}
+                                            className={`w-20 text-center ${
+                                              isOverLimit ? 'border-red-500' : ''
+                                            }`}
+                                          />
+                                          {isOverLimit && (
+                                            <span className="text-xs text-red-500">Exceeds available</span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-center">
+                                        <span className="text-sm text-slate-600">{percentage}%</span>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          {/* Info Message */}
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              💡 <strong>How it works:</strong> When a student starts the exam, the system will randomly select 
+                              the specified number of questions from each section, ensuring an even distribution across all sections.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>

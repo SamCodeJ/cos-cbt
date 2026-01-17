@@ -9,7 +9,7 @@ The mobile app needs to connect to your backend server. By default, it's configu
 **File:** `mobile/src/api/client.js`
 
 ```javascript
-const API_BASE_URL = 'http://10.57.236.125:3000/api';
+const API_BASE_URL = 'http://10.25.38.125:3001/api';
 ```
 
 ## How to Update the IP Address
@@ -18,8 +18,8 @@ const API_BASE_URL = 'http://10.57.236.125:3000/api';
 
 1. **Look at the backend terminal** - When the backend starts, it displays:
    ```
-   🚀 UI-GES Backend Server running on port 3000
-   📱 Mobile Device URL: http://YOUR_IP_HERE:3000/api
+   🚀 UI-GES Backend Server running on port 3001
+   📱 Mobile Device URL: http://YOUR_IP_HERE:3001/api
    ```
 
 2. **Or find it manually:**
@@ -30,9 +30,9 @@ const API_BASE_URL = 'http://10.57.236.125:3000/api';
 ### Step 2: Update the Mobile App
 
 1. Open `mobile/src/api/client.js`
-2. Update line 4:
+2. Update line 8:
    ```javascript
-   const API_BASE_URL = 'http://YOUR_IP_HERE:3000/api';
+   export const API_BASE_URL = 'http://YOUR_IP_HERE:3001/api';
    ```
 3. Save the file
 4. Reload your mobile app (press 'r' in Expo terminal or shake device)
@@ -53,21 +53,21 @@ const API_BASE_URL = 'http://10.57.236.125:3000/api';
    cd backend
    npm run dev
    ```
-   You should see: "🚀 UI-GES Backend Server running on port 3000"
+   You should see: "🚀 UI-GES Backend Server running on port 3001"
 
 2. Verify your computer's current IP address matches `API_BASE_URL`
 
 3. Ensure phone and computer are on the **same WiFi network**
 
-4. Check Windows Firewall isn't blocking port 3000:
+4. Check Windows Firewall isn't blocking port 3001:
    - Open Windows Defender Firewall
    - Allow Node.js through firewall
    - Or temporarily disable firewall for testing
 
 5. Try accessing backend from phone browser:
    - Open browser on phone
-   - Navigate to: `http://YOUR_IP:3000/api/`
-   - Should see backend response
+   - Navigate to: `http://YOUR_IP:3001/health`
+   - Should see: `{"status":"ok","timestamp":"..."}`
 
 ### ⏱️ "Connection timeout"
 

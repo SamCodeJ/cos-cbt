@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const os = require('os');
 require('dotenv').config();
+// UI-GES Backend Server
 
 const db = require('./database/db');
 const authRoutes = require('./routes/auth');
@@ -62,21 +63,36 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting (more permissive in development)
+// Rate limiting - Optimized for 1000 concurrent candidates
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev, 100 in production
+  max: process.env.NODE_ENV === 'production' ? 5000 : 10000, // Increased for high concurrency
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
 });
 app.use('/api/', limiter);
 
-console.log(`🛡️  Rate limiting: ${process.env.NODE_ENV === 'production' ? '100' : '1000'} requests per 15 minutes`);
+console.log(`🛡️  Rate limiting: ${process.env.NODE_ENV === 'production' ? '5000' : '10000'} requests per 15 minutes (optimized for 1000 concurrent users)`);
 
-// Body parsing middleware
+// Body parsing middleware with optimized limits
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Add compression for better performance with many concurrent users
+const compression = require('compression');
+app.use(compression({
+  level: 6, // Compression level (0-9, 6 is good balance)
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // Logging
 if (process.env.NODE_ENV === 'development') {

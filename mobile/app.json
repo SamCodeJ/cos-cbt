@@ -20,7 +20,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.uiges.mobile"
+      "package": "com.uiges.mobile",
+      "permissions": [
+        "SYSTEM_ALERT_WINDOW",
+        "DISABLE_KEYGUARD",
+        "REORDER_TASKS"
+      ],
+      "userInterfaceStyle": "light"
     }
   }
 }

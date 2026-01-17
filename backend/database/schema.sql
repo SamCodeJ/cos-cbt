@@ -57,8 +57,9 @@ CREATE TABLE questions (
     option_b TEXT NOT NULL,
     option_c TEXT,
     option_d TEXT,
-    correct_answer VARCHAR(1) NOT NULL CHECK (correct_answer IN ('A', 'B', 'C', 'D')),
+    correct_answer VARCHAR(10) NOT NULL CHECK (correct_answer ~ '^[A-D](,[A-D])*$'),
     points INTEGER DEFAULT 1,
+    is_multi_answer BOOLEAN DEFAULT false,
     usage_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -80,7 +81,11 @@ CREATE TABLE exam_questions (
     candidate_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
     question_order INTEGER NOT NULL,
-    shuffled_correct_answer VARCHAR(1), -- Stores correct answer after option randomization
+    shuffled_correct_answer VARCHAR(10) CHECK (shuffled_correct_answer IS NULL OR shuffled_correct_answer ~ '^[A-D](,[A-D])*$'), -- Stores correct answer(s) after option randomization
+    shuffled_option_a TEXT,
+    shuffled_option_b TEXT,
+    shuffled_option_c TEXT,
+    shuffled_option_d TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(exam_id, candidate_id, question_id)
 );
@@ -107,7 +112,7 @@ CREATE TABLE exam_answers (
     id SERIAL PRIMARY KEY,
     attempt_id INTEGER REFERENCES exam_attempts(id) ON DELETE CASCADE,
     question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
-    answer VARCHAR(1) CHECK (answer IN ('A', 'B', 'C', 'D')),
+    answer VARCHAR(10) CHECK (answer IS NULL OR answer ~ '^[A-D](,[A-D])*$'),
     is_correct BOOLEAN,
     answered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(attempt_id, question_id)
@@ -138,6 +143,7 @@ CREATE INDEX idx_exams_teacher_id ON exams(teacher_id);
 CREATE INDEX idx_exams_status ON exams(status);
 CREATE INDEX idx_questions_exam_id ON questions(exam_id);
 CREATE INDEX idx_questions_subject ON questions(subject);
+CREATE INDEX idx_questions_is_multi_answer ON questions(is_multi_answer);
 CREATE INDEX idx_exam_candidates_exam_id ON exam_candidates(exam_id);
 CREATE INDEX idx_exam_candidates_candidate_id ON exam_candidates(candidate_id);
 CREATE INDEX idx_exam_attempts_exam_id ON exam_attempts(exam_id);

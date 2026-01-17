@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Alert, AppState } from 'react-native';
-import { Text, Button, RadioButton, IconButton, Card, Portal, Modal, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, AppState, Image } from 'react-native';
+import { Text, Button, RadioButton, IconButton, Card, Portal, Modal, Chip, Checkbox } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { candidateAPI } from '../api/client';
+import { candidateAPI, API_BASE_URL } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RenderHTML from 'react-native-render-html';
+import KioskMode from '../utils/KioskMode';
+import { useAuthStore } from '../store/authStore';
 
 export default function ExamScreen({ route, navigation }) {
   const { exam } = route.params;
   const insets = useSafeAreaInsets();
+  const { logout } = useAuthStore();
   
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -22,11 +26,10 @@ export default function ExamScreen({ route, navigation }) {
   const appState = useRef(AppState.currentState);
   const timerRef = useRef(null);
   const autoSaveRef = useRef(null);
+  const timeCheckRef = useRef(null);
 
   useEffect(() => {
-    startExam();
-    startTimer();
-    startAutoSave();
+    initializeExam();
     
     if (exam.enforce_screen_lock) {
       const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -34,19 +37,83 @@ export default function ExamScreen({ route, navigation }) {
         subscription?.remove();
         clearInterval(timerRef.current);
         clearInterval(autoSaveRef.current);
+        clearInterval(timeCheckRef.current);
+        // Deactivate kiosk mode on cleanup
+        KioskMode.deactivate().catch(err => console.error('Cleanup kiosk error:', err));
       };
     }
 
     return () => {
       clearInterval(timerRef.current);
       clearInterval(autoSaveRef.current);
+      clearInterval(timeCheckRef.current);
+      // Deactivate kiosk mode on cleanup
+      KioskMode.deactivate().catch(err => console.error('Cleanup kiosk error:', err));
     };
   }, []);
+
+  const initializeExam = async () => {
+    // Activate kiosk mode FIRST
+    try {
+      await KioskMode.activate();
+    } catch (error) {
+      console.error('Failed to activate kiosk mode:', error);
+      // Continue with exam even if kiosk mode fails
+    }
+
+    // Then start the exam
+    startExam();
+    startTimer();
+    startAutoSave();
+    startTimeCheck(); // Check for time extensions periodically
+  };
+
+  // Helper function to convert [IMAGE:...] placeholders to <img> tags with full URLs
+  const convertImagePlaceholders = (html) => {
+    if (!html) return html;
+    // Convert [IMAGE:/uploads/question-images/filename.jpg] to <img> tag
+    return html.replace(/\[IMAGE:([^\]]+)\]/gi, (match, imagePath) => {
+      // Remove leading slash if present and construct full URL
+      const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const imageUrl = `${baseUrl}/${cleanPath}`;
+      return `<img src="${imageUrl}" style="max-width: 100%; height: auto;" />`;
+    });
+  };
 
   const startExam = async () => {
     try {
       const data = await candidateAPI.startExam(exam.id);
-      setQuestions(data.questions);
+      
+      // Set the correct initial time from server response
+      if (data.time_remaining_seconds !== undefined) {
+        console.log(`⏱️ Initial time from server: ${data.time_remaining_seconds} seconds (${Math.floor(data.time_remaining_seconds / 60)} minutes)`);
+        setTimeRemaining(data.time_remaining_seconds);
+      } else {
+        console.log('⚠️ No time_remaining_seconds in response, using exam duration');
+      }
+      
+      // Debug: Log first question to check option formatting
+      if (data.questions && data.questions.length > 0) {
+        console.log('Sample question options:', {
+          option_a: data.questions[0].option_a,
+          option_b: data.questions[0].option_b,
+          option_c: data.questions[0].option_c,
+          option_d: data.questions[0].option_d
+        });
+      }
+      // Convert image placeholders to HTML img tags
+      const questionsWithImages = data.questions.map(q => ({
+        ...q,
+        question_text: convertImagePlaceholders(q.question_text),
+        option_a: convertImagePlaceholders(q.option_a),
+        option_b: convertImagePlaceholders(q.option_b),
+        option_c: convertImagePlaceholders(q.option_c),
+        option_d: convertImagePlaceholders(q.option_d),
+        passage: convertImagePlaceholders(q.passage),
+        instruction: convertImagePlaceholders(q.instruction)
+      }));
+      setQuestions(questionsWithImages);
       
       // Load saved progress if any
       const savedProgress = await AsyncStorage.getItem(`exam_${exam.id}_progress`);
@@ -57,15 +124,28 @@ export default function ExamScreen({ route, navigation }) {
         setCurrentQuestionIndex(progress.currentQuestionIndex || 0);
       }
     } catch (error) {
+      console.error('Start exam error:', error);
+      console.error('Error response:', error.response?.data);
+      
       let errorMessage = 'Failed to start exam. Please try again.';
+      let errorDetails = '';
       
       if (error.response?.status === 403) {
         errorMessage = error.response?.data?.error || 'You are not authorized to access this exam.';
       } else if (error.response?.status === 400) {
         errorMessage = error.response?.data?.error || 'Invalid exam request.';
+      } else if (error.response?.status === 500) {
+        errorMessage = error.response?.data?.error || 'Server error occurred.';
+        // Show detailed error in development
+        if (error.response?.data?.details) {
+          errorDetails = `\n\nDetails: ${error.response.data.details.message || error.response.data.details}`;
+          if (error.response.data.details.detail) {
+            errorDetails += `\n${error.response.data.details.detail}`;
+          }
+        }
       }
       
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', errorMessage + errorDetails);
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -78,6 +158,7 @@ export default function ExamScreen({ route, navigation }) {
         if (prevTime <= 1) {
           clearInterval(timerRef.current);
           clearInterval(autoSaveRef.current);
+          clearInterval(timeCheckRef.current);
           setTimeout(() => {
             submitExam('Time expired - exam duration completed');
           }, 100);
@@ -91,7 +172,71 @@ export default function ExamScreen({ route, navigation }) {
   const startAutoSave = () => {
     autoSaveRef.current = setInterval(() => {
       saveProgress();
-    }, 30000); // Auto-save every 30 seconds
+    }, 45000); // Auto-save every 45 seconds (optimized for 1000 concurrent users)
+  };
+
+  // Check for time extensions from teacher
+  const startTimeCheck = () => {
+    timeCheckRef.current = setInterval(() => {
+      checkTimeRemaining();
+    }, 60000); // Check every 60 seconds (optimized for 1000 concurrent users)
+  };
+
+  const checkTimeRemaining = async () => {
+    try {
+      console.log('🔄 Checking time remaining from server...');
+      const response = await candidateAPI.getTimeRemaining(exam.id);
+      console.log('📊 Server response:', JSON.stringify(response));
+      
+      if (response && response.time_remaining_seconds !== undefined && response.time_remaining_seconds !== null) {
+        const serverTimeRemaining = parseInt(response.time_remaining_seconds);
+        
+        // Validate server time is positive
+        if (serverTimeRemaining < 0) {
+          console.log('⚠️ Server returned negative time, ignoring:', serverTimeRemaining);
+          return;
+        }
+        
+        // If server time is significantly different (more than 5 seconds), update it
+        // This handles time extensions from teacher
+        setTimeRemaining((currentTime) => {
+          const difference = Math.abs(serverTimeRemaining - currentTime);
+          
+          console.log(`⏱️ Time comparison - Current: ${currentTime}s, Server: ${serverTimeRemaining}s, Difference: ${difference}s`);
+          
+          if (difference > 5) {
+            // Show notification if time was extended
+            if (serverTimeRemaining > currentTime) {
+              const addedMinutes = Math.floor((serverTimeRemaining - currentTime) / 60);
+              console.log(`✅ Time extended! Adding ${addedMinutes} minute(s)`);
+              if (addedMinutes > 0) {
+                Alert.alert(
+                  '⏰ Time Extended',
+                  `Your teacher has added ${addedMinutes} minute(s) to your exam time!`,
+                  [{ text: 'OK' }]
+                );
+              }
+            } else {
+              console.log('⚠️ Server time is LESS than current time - possible time reduction or calculation error');
+            }
+            console.log(`🔄 Updating timer from ${currentTime}s to ${serverTimeRemaining}s`);
+            return serverTimeRemaining;
+          } else {
+            console.log('✅ Time difference within threshold, keeping current timer');
+          }
+          
+          return currentTime;
+        });
+      } else {
+        console.log('⚠️ Invalid or missing time_remaining_seconds in response:', response);
+      }
+    } catch (error) {
+      // Log error but don't disrupt the exam
+      console.error('❌ Time check error:', error.message);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
+    }
   };
 
   const saveProgress = async () => {
@@ -165,6 +310,57 @@ export default function ExamScreen({ route, navigation }) {
     }
   };
 
+  // Handle multi-answer checkbox toggle
+  const handleCheckboxToggle = async (option) => {
+    const questionId = questions[currentQuestionIndex].id;
+    const currentAnswer = answers[questionId] || '';
+    const selectedOptions = currentAnswer ? currentAnswer.split(',') : [];
+    
+    let newSelectedOptions;
+    if (selectedOptions.includes(option)) {
+      // Remove the option
+      newSelectedOptions = selectedOptions.filter(o => o !== option);
+    } else {
+      // Add the option
+      newSelectedOptions = [...selectedOptions, option];
+    }
+    
+    // Sort and join
+    const newAnswer = newSelectedOptions.sort().join(',');
+    
+    const newAnswers = {
+      ...answers,
+      [questionId]: newAnswer,
+    };
+    setAnswers(newAnswers);
+    
+    // Save answer to backend
+    try {
+      await candidateAPI.saveAnswer(
+        exam.id,
+        questionId,
+        newAnswer
+      );
+    } catch (error) {
+      console.error('Error saving answer:', error);
+      
+      if (error.response?.status === 403) {
+        Alert.alert(
+          'Access Denied',
+          'You are not authorized to take this exam. The exam will now close.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
+    }
+  };
+
+  // Check if an option is selected in multi-answer question
+  const isCheckboxChecked = (option) => {
+    const currentAnswer = answers[currentQuestion.id] || '';
+    const selectedOptions = currentAnswer.split(',');
+    return selectedOptions.includes(option);
+  };
+
   const toggleFlag = () => {
     const questionId = questions[currentQuestionIndex].id;
     const newFlagged = new Set(flagged);
@@ -223,16 +419,24 @@ export default function ExamScreen({ route, navigation }) {
       await candidateAPI.submitExam(exam.id, formattedAnswers, violationsList);
       await AsyncStorage.removeItem(`exam_${exam.id}_progress`);
       
+      // Deactivate kiosk mode before showing alert
+      await KioskMode.deactivate();
+      
       Alert.alert(
         'Exam Auto-Submitted',
         reason,
         [{ 
           text: 'OK', 
-          onPress: () => {
+          onPress: async () => {
             if (exam.show_results) {
+              // Don't logout yet - ResultScreen needs the token to fetch results
               navigation.replace('Result', { examId: exam.id });
             } else {
-              navigation.navigate('Dashboard');
+              // Logout before showing thank you screen (no API call needed)
+              await AsyncStorage.removeItem('auth_token');
+              await AsyncStorage.removeItem('candidate');
+              logout();
+              navigation.replace('ThankYou', { examTitle: exam.title });
             }
           }
         }],
@@ -240,10 +444,18 @@ export default function ExamScreen({ route, navigation }) {
       );
     } catch (error) {
       console.error('Auto-submit error:', error);
+      // Deactivate kiosk mode even on error
+      await KioskMode.deactivate();
+      
+      // Logout and show thank you screen on error
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('candidate');
+      logout();
+      
       Alert.alert(
         'Exam Auto-Submitted',
-        'Your exam has been auto-submitted due to violations. You will be redirected to the dashboard.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Dashboard') }],
+        'Your exam has been auto-submitted due to violations.',
+        [{ text: 'OK', onPress: () => navigation.replace('ThankYou', { examTitle: exam.title }) }],
         { cancelable: false }
       );
     }
@@ -265,38 +477,55 @@ export default function ExamScreen({ route, navigation }) {
       await candidateAPI.submitExam(exam.id, formattedAnswers, violations);
       await AsyncStorage.removeItem(`exam_${exam.id}_progress`);
       
+      // Deactivate kiosk mode after successful submission
+      await KioskMode.deactivate();
+      
       if (autoSubmitReason) {
         Alert.alert(
           'Exam Auto-Submitted',
           autoSubmitReason,
           [{ 
             text: 'OK', 
-            onPress: () => {
+            onPress: async () => {
               if (exam.show_results) {
+                // Don't logout yet - ResultScreen needs the token to fetch results
                 navigation.replace('Result', { examId: exam.id });
               } else {
-                navigation.navigate('Dashboard');
+                // Logout before showing thank you screen (no API call needed)
+                await AsyncStorage.removeItem('auth_token');
+                await AsyncStorage.removeItem('candidate');
+                logout();
+                navigation.replace('ThankYou', { examTitle: exam.title });
               }
             }
           }],
           { cancelable: false }
         );
       } else if (exam.show_results) {
+        // Don't logout yet - ResultScreen needs the token to fetch results
         navigation.replace('Result', { examId: exam.id });
       } else {
-        Alert.alert(
-          'Exam Submitted',
-          'Your exam has been submitted successfully. Results will be shared by your teacher.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Dashboard') }]
-        );
+        // Logout before showing thank you screen (no API call needed)
+        await AsyncStorage.removeItem('auth_token');
+        await AsyncStorage.removeItem('candidate');
+        logout();
+        navigation.replace('ThankYou', { examTitle: exam.title });
       }
     } catch (error) {
       let errorMessage = 'Failed to submit exam. Please try again.';
       
       if (error.response?.status === 403) {
         errorMessage = error.response?.data?.error || 'You are not authorized to submit this exam.';
+        // Deactivate kiosk mode on error too
+        await KioskMode.deactivate();
+        
+        // Logout on error too
+        await AsyncStorage.removeItem('auth_token');
+        await AsyncStorage.removeItem('candidate');
+        logout();
+        
         Alert.alert('Access Denied', errorMessage, [
-          { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
+          { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
         ]);
         return;
       }
@@ -333,6 +562,16 @@ export default function ExamScreen({ route, navigation }) {
 
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
+  // Safety check - ensure we have a valid question
+  if (!currentQuestion) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text>Error: Question not found</Text>
+        <Button onPress={() => navigation.goBack()}>Go Back</Button>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -372,6 +611,61 @@ export default function ExamScreen({ route, navigation }) {
       <ScrollView style={styles.content}>
         <Card style={styles.questionCard}>
           <Card.Content>
+            {/* Section Header - Show if this question has a section */}
+            {currentQuestion?.section_id && (
+              <View style={styles.sectionHeader}>
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                  📚 Section: {currentQuestion.section_id}
+                </Text>
+                {currentQuestion?.instruction && (
+                  <View style={styles.sectionInstruction}>
+                    <Text style={styles.instructionLabel}>Instructions: </Text>
+                    <RenderHTML
+                      contentWidth={300}
+                      source={{ html: currentQuestion.instruction }}
+                      baseStyle={styles.instructionText}
+                      tagsStyles={{
+                        sub: { fontSize: 10, lineHeight: 14 },
+                        sup: { fontSize: 10, lineHeight: 14 },
+                        img: { maxWidth: '100%', height: 'auto' }
+                      }}
+                      renderersProps={{
+                        img: {
+                          enableExperimentalPercentWidth: true
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {/* Passage - Show if this question has a passage */}
+            {currentQuestion?.passage && (
+              <View style={styles.passageContainer}>
+            <RenderHTML
+              contentWidth={300}
+              source={{ html: currentQuestion.passage }}
+              baseStyle={styles.passageText}
+              tagsStyles={{
+                sub: { fontSize: 10, lineHeight: 14 },
+                sup: { fontSize: 10, lineHeight: 14 },
+                strong: { fontWeight: 'bold' },
+                b: { fontWeight: 'bold' },
+                em: { fontStyle: 'italic' },
+                i: { fontStyle: 'italic' },
+                u: { textDecorationLine: 'underline' },
+                img: { maxWidth: '100%', height: 'auto' }
+              }}
+              renderersProps={{
+                img: {
+                  enableExperimentalPercentWidth: true
+                }
+              }}
+            />
+              </View>
+            )}
+            
             <View style={styles.questionHeader}>
               <Text variant="titleMedium" style={styles.questionNumber}>
                 Question {currentQuestionIndex + 1}
@@ -383,30 +677,141 @@ export default function ExamScreen({ route, navigation }) {
               />
             </View>
             
-            <Text variant="bodyLarge" style={styles.questionText}>
-              {currentQuestion.question_text}
-            </Text>
+            <RenderHTML
+              contentWidth={300}
+              source={{ html: currentQuestion.question_text }}
+              baseStyle={styles.questionText}
+              tagsStyles={{
+                sub: { fontSize: 10, lineHeight: 14 },
+                sup: { fontSize: 10, lineHeight: 14 },
+                strong: { fontWeight: 'bold' },
+                b: { fontWeight: 'bold' },
+                em: { fontStyle: 'italic' },
+                i: { fontStyle: 'italic' },
+                u: { textDecorationLine: 'underline' },
+                img: { maxWidth: '100%', height: 'auto' }
+              }}
+              renderersProps={{
+                img: {
+                  enableExperimentalPercentWidth: true
+                }
+              }}
+            />
 
-            <RadioButton.Group
-              onValueChange={handleAnswerSelect}
-              value={answers[currentQuestion.id] || ''}
-            >
-              {['A', 'B', 'C', 'D'].map((option) => {
-                const optionKey = `option_${option.toLowerCase()}`;
-                if (!currentQuestion[optionKey]) return null;
-                
-                return (
-                  <View key={option} style={styles.optionContainer}>
-                    <RadioButton.Item
-                      label={currentQuestion[optionKey]}
-                      value={option}
-                      style={styles.radioItem}
-                      labelStyle={styles.radioLabel}
-                    />
-                  </View>
-                );
-              })}
-            </RadioButton.Group>
+            {currentQuestion.is_multi_answer ? (
+              <View>
+                <Text variant="labelSmall" style={styles.multiAnswerHint}>
+                  Select all correct answers
+                </Text>
+                {['A', 'B', 'C', 'D'].map((option) => {
+                  const optionKey = `option_${option.toLowerCase()}`;
+                  // Check if option exists and has content (not just empty string or whitespace)
+                  if (!currentQuestion[optionKey] || !String(currentQuestion[optionKey]).trim()) return null;
+                  
+                  return (
+                    <View key={option} style={styles.optionContainer}>
+                      <View style={styles.optionRow}>
+                        <Checkbox
+                          status={isCheckboxChecked(option) ? 'checked' : 'unchecked'}
+                          onPress={() => handleCheckboxToggle(option)}
+                          uncheckedColor="#64748b"
+                          color="#d97706"
+                        />
+                        <View style={styles.optionLabelContainer}>
+                          <Text style={styles.optionLetter}>{option}: </Text>
+                          {currentQuestion[optionKey] && String(currentQuestion[optionKey]).trim() ? (
+                            <View style={{ flex: 1 }}>
+                              <RenderHTML
+                                contentWidth={250}
+                                source={{ html: String(currentQuestion[optionKey]).trim() }}
+                                baseStyle={styles.optionLabel}
+                                tagsStyles={{
+                                  sub: { fontSize: 10, lineHeight: 14 },
+                                  sup: { fontSize: 10, lineHeight: 14 },
+                                  strong: { fontWeight: 'bold' },
+                                  b: { fontWeight: 'bold' },
+                                  em: { fontStyle: 'italic' },
+                                  i: { fontStyle: 'italic' },
+                                  u: { textDecorationLine: 'underline' },
+                                  img: { maxWidth: '100%', height: 'auto' }
+                                }}
+                                defaultTextProps={{ numberOfLines: 0 }}
+                                renderersProps={{
+                                  text: { allowFontScaling: true },
+                                  img: {
+                                    enableExperimentalPercentWidth: true
+                                  }
+                                }}
+                                systemFonts={['System']}
+                              />
+                            </View>
+                          ) : (
+                            <Text style={styles.optionLabel}>No option text</Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <RadioButton.Group
+                onValueChange={handleAnswerSelect}
+                value={answers[currentQuestion.id] || ''}
+              >
+                {['A', 'B', 'C', 'D'].map((option) => {
+                  const optionKey = `option_${option.toLowerCase()}`;
+                  // Check if option exists and has content (not just empty string or whitespace)
+                  if (!currentQuestion[optionKey] || !String(currentQuestion[optionKey]).trim()) return null;
+                  
+                  return (
+                    <View key={option} style={styles.optionContainer}>
+                      <View style={styles.optionRow}>
+                        <RadioButton
+                          value={option}
+                          status={answers[currentQuestion.id] === option ? 'checked' : 'unchecked'}
+                          onPress={() => handleAnswerSelect(option)}
+                          uncheckedColor="#64748b"
+                          color="#d97706"
+                        />
+                        <View style={styles.optionLabelContainer} onStartShouldSetResponder={() => true} onResponderRelease={() => handleAnswerSelect(option)}>
+                          <Text style={styles.optionLetter}>{option}: </Text>
+                          {currentQuestion[optionKey] && currentQuestion[optionKey].trim() ? (
+                            <View style={{ flex: 1 }}>
+                              <RenderHTML
+                                contentWidth={250}
+                                source={{ html: String(currentQuestion[optionKey]).trim() }}
+                                baseStyle={styles.optionLabel}
+                                tagsStyles={{
+                                  sub: { fontSize: 10, lineHeight: 14 },
+                                  sup: { fontSize: 10, lineHeight: 14 },
+                                  strong: { fontWeight: 'bold' },
+                                  b: { fontWeight: 'bold' },
+                                  em: { fontStyle: 'italic' },
+                                  i: { fontStyle: 'italic' },
+                                  u: { textDecorationLine: 'underline' },
+                                  img: { maxWidth: '100%', height: 'auto' }
+                                }}
+                                defaultTextProps={{ numberOfLines: 0 }}
+                                renderersProps={{
+                                  text: { allowFontScaling: true },
+                                  img: {
+                                    enableExperimentalPercentWidth: true
+                                  }
+                                }}
+                                systemFonts={['System']}
+                              />
+                            </View>
+                          ) : (
+                            <Text style={styles.optionLabel}>No option text</Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </RadioButton.Group>
+            )}
           </Card.Content>
         </Card>
       </ScrollView>
@@ -414,42 +819,52 @@ export default function ExamScreen({ route, navigation }) {
       {/* Navigation Footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.navigationButtons}>
-          <Button
-            mode="outlined"
-            onPress={() => navigateQuestion('prev')}
-            disabled={currentQuestionIndex === 0}
-            style={styles.navButton}
-          >
-            Previous
-          </Button>
-          
-          <Button
-            mode="outlined"
-            onPress={() => setPaletteVisible(true)}
-            style={styles.paletteButton}
-            icon="grid"
-          >
-            Palette
-          </Button>
-          
-          {!isLastQuestion ? (
+          <View style={styles.buttonWrapperLeft}>
             <Button
               mode="outlined"
-              onPress={() => navigateQuestion('next')}
+              onPress={() => navigateQuestion('prev')}
+              disabled={currentQuestionIndex === 0}
               style={styles.navButton}
+              contentStyle={styles.buttonContent}
             >
-              Next
+              Previous
             </Button>
-          ) : (
+          </View>
+          
+          <View style={styles.buttonWrapperCenter}>
             <Button
-              mode="contained"
-              onPress={handleSubmit}
-              style={styles.submitButton}
-              disabled={isSubmitting}
+              mode="outlined"
+              onPress={() => setPaletteVisible(true)}
+              style={styles.paletteButton}
+              contentStyle={styles.buttonContent}
+              icon="grid"
             >
-              Submit
+              P.
             </Button>
-          )}
+          </View>
+          
+          <View style={styles.buttonWrapperRight}>
+            {!isLastQuestion ? (
+              <Button
+                mode="outlined"
+                onPress={() => navigateQuestion('next')}
+                style={styles.navButton}
+                contentStyle={styles.buttonContent}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                mode="contained"
+                onPress={handleSubmit}
+                style={styles.submitButton}
+                contentStyle={styles.buttonContent}
+                disabled={isSubmitting}
+              >
+                Submit
+              </Button>
+            )}
+          </View>
         </View>
       </View>
 
@@ -586,11 +1001,44 @@ const styles = StyleSheet.create({
   optionContainer: {
     marginBottom: 8,
   },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+  },
+  optionLabelContainer: {
+    flex: 1,
+    marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  optionLetter: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginRight: 4,
+  },
+  optionLabel: {
+    fontSize: 16,
+    color: '#1e293b',
+    flex: 1,
+  },
   radioItem: {
     paddingHorizontal: 0,
   },
   radioLabel: {
     fontSize: 16,
+  },
+  checkboxItem: {
+    paddingHorizontal: 0,
+  },
+  checkboxLabel: {
+    fontSize: 16,
+  },
+  multiAnswerHint: {
+    color: '#d97706',
+    marginBottom: 12,
+    fontWeight: 'bold',
   },
   footer: {
     backgroundColor: '#fff',
@@ -601,16 +1049,36 @@ const styles = StyleSheet.create({
   },
   navigationButtons: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  buttonWrapperLeft: {
+    width: '40%',
+    marginRight: 2,
+    height: 60,
+  },
+  buttonWrapperCenter: {
+    width: '20%',
+    marginHorizontal:1.5,
+    height: 60,
+  },
+  buttonWrapperRight: {
+    width: '40%',
+    height: 60,
+    marginLeft: 2,
   },
   navButton: {
-    flex: 1,
+    width: '100%',
   },
   paletteButton: {
-    flex: 1,
+    width: '100%',
   },
   submitButton: {
-    flex: 1,
+    width: '100%',
+  },
+  buttonContent: {
+    paddingVertical: 8,
   },
   modalContent: {
     backgroundColor: 'white',
@@ -673,6 +1141,46 @@ const styles = StyleSheet.create({
   },
   closePaletteButton: {
     marginTop: 16,
+  },
+  sectionHeader: {
+    backgroundColor: '#fef3c7',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  sectionTitle: {
+    fontWeight: 'bold',
+    color: '#92400e',
+    marginBottom: 8,
+  },
+  sectionInstruction: {
+    color: '#78350f',
+    lineHeight: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  instructionLabel: {
+    fontWeight: 'bold',
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#78350f',
+    lineHeight: 20,
+  },
+  passageContainer: {
+    backgroundColor: '#f0f9ff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0ea5e9',
+  },
+  passageText: {
+    color: '#0c4a6e',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
 });
 

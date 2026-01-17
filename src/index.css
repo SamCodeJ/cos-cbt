@@ -81,5 +81,53 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Ensure subscripts and superscripts render properly */
+  sub {
+    font-size: 0.75em;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+    bottom: -0.25em;
+  }
+  
+  sup {
+    font-size: 0.75em;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+    top: -0.5em;
+  }
+
+  /* Ensure text formatting tags render properly in questions */
+  u {
+    text-decoration: underline !important;
+    text-decoration-line: underline !important;
+    text-decoration-thickness: 1px !important;
+    text-underline-offset: 2px !important;
+    text-decoration-skip-ink: none !important;
+  }
+
+  /* Also target spans that might contain u tags */
+  * u {
+    text-decoration: underline !important;
+    text-decoration-line: underline !important;
+    text-decoration-thickness: 1px !important;
+  }
+
+  i, em {
+    font-style: italic !important;
+  }
+
+  b, strong {
+    font-weight: bold !important;
+  }
+}
+
+/* Additional layer to ensure underlines show in components */
+@layer components {
+  u {
+    text-decoration: underline !important;
+  }
 }
 

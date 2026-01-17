@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power, Eye, EyeOff } from 'lucide-react';
+import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { teacherAPI } from '@/api/client';
 import { toast } from 'sonner';
 
@@ -44,6 +44,8 @@ export default function Candidates() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadCandidates();
@@ -72,12 +74,152 @@ export default function Candidates() {
     );
   });
 
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  // Pagination helpers
+  const getPaginatedItems = (items, page, itemsPerPage) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (items, itemsPerPage) => {
+    return Math.ceil(items.length / itemsPerPage);
+  };
+
+  const handleItemsPerPageChange = (newPerPage) => {
+    setItemsPerPage(newPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Paginated data
+  const paginatedCandidates = getPaginatedItems(filteredCandidates, currentPage, itemsPerPage);
+  const totalPages = getTotalPages(filteredCandidates, itemsPerPage);
+
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
+    const totalItems = filteredCandidates.length;
+    
+    if (totalItems === 0) return null;
+
+    const pages = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    const startItem = ((currentPage - 1) * itemsPerPage) + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-600">
+            Showing {startItem} to {endItem} of {totalItems} candidates
+          </div>
+          
+          {/* Length Menu */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="candidates-per-page" className="text-sm text-slate-600">
+              Show:
+            </Label>
+            <select
+              id="candidates-per-page"
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="h-8 rounded-md border border-slate-300 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          {startPage > 1 && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(1)}
+              >
+                1
+              </Button>
+              {startPage > 2 && <span className="px-2 py-1">...</span>}
+            </>
+          )}
+          
+          {pages.map(page => (
+            <Button
+              key={page}
+              type="button"
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={currentPage === page ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {page}
+            </Button>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 py-1">...</span>}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(totalPages)}
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const handleEditClick = (candidate) => {
@@ -196,7 +338,7 @@ export default function Candidates() {
               <>
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
-                  {filteredCandidates.map((candidate) => (
+                  {paginatedCandidates.map((candidate) => (
                     <div key={candidate.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -279,6 +421,7 @@ export default function Candidates() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
+                        <TableHead className="w-16">S/N</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Student ID</TableHead>
@@ -290,8 +433,11 @@ export default function Candidates() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCandidates.map((candidate) => (
+                      {paginatedCandidates.map((candidate, index) => (
                         <TableRow key={candidate.id} className="hover:bg-slate-50">
+                          <TableCell className="text-slate-500">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </TableCell>
                           <TableCell className="font-medium">{candidate.name}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2 text-slate-600">
@@ -354,6 +500,13 @@ export default function Candidates() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
               </>
             )}
           </CardContent>

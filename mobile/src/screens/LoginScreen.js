@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Card, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,20 +7,28 @@ import { useAuthStore } from '../store/authStore';
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [connectionStatus, setConnectionStatus] = useState(null);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const hasTestedConnection = useRef(false);
   
   const { setToken, setCandidate } = useAuthStore();
 
-  // Test connection on component mount
+  // Test connection on component mount (only once)
   useEffect(() => {
+    // Prevent multiple calls (React StrictMode in dev can cause double renders)
+    if (hasTestedConnection.current) return;
+    hasTestedConnection.current = true;
+    
     const checkConnection = async () => {
+      setTestingConnection(true);
       const result = await testConnection();
       setConnectionStatus(result);
+      setTestingConnection(false);
       
       if (!result.success) {
         console.log('⚠️  Backend connection test failed on login screen load');
@@ -33,14 +41,14 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     setError('');
     
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!studentId || !password) {
+      setError('Please enter both Student ID and password');
       return;
     }
 
     setLoading(true);
     try {
-      const data = await candidateAPI.login(email, password);
+      const data = await candidateAPI.login(studentId, password);
       setToken(data.token);
       setCandidate(data.candidate);
       navigation.replace('Dashboard');
@@ -56,7 +64,7 @@ export default function LoginScreen({ navigation }) {
       } else if (err.code === 'ECONNABORTED') {
         errorMessage = '⏱️ Connection timeout. Server is not responding.\n\nPlease check if the backend server is running.';
       } else if (err.response?.status === 401) {
-        errorMessage = '🔐 Invalid email or password.\n\nPlease check your credentials and try again.';
+        errorMessage = '🔐 Invalid Student ID or password.\n\nPlease check your credentials and try again.';
       } else if (err.response?.status === 403) {
         errorMessage = '🚫 Account is deactivated.\n\nPlease contact your teacher.';
       } else if (err.response?.data?.error) {
@@ -110,15 +118,22 @@ export default function LoginScreen({ navigation }) {
               <View style={styles.warningBox}>
                 <Text style={styles.warningTitle}>⚠️ Connection Warning</Text>
                 <Text style={styles.warningText}>Backend server may not be reachable</Text>
+                <Text style={styles.warningSubtext}>
+                  Make sure the backend server is running on {connectionStatus.attemptedUrl?.replace('/health', '') || 'your computer'}
+                </Text>
                 <Button 
                   mode="text" 
                   onPress={async () => {
-                    const result = await testConnection();
+                    if (testingConnection) return;
+                    setTestingConnection(true);
+                    const result = await testConnection(0); // No retries on manual test
                     setConnectionStatus(result);
+                    setTestingConnection(false);
                   }}
                   style={styles.retryButton}
+                  disabled={testingConnection}
                 >
-                  Test Connection Again
+                  {testingConnection ? 'Testing...' : 'Test Connection Again'}
                 </Button>
               </View>
             )}
@@ -128,14 +143,14 @@ export default function LoginScreen({ navigation }) {
             ) : null}
 
             <TextInput
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
+              label="Student ID"
+              value={studentId}
+              onChangeText={setStudentId}
               mode="outlined"
-              keyboardType="email-address"
-              autoCapitalize="none"
+              autoCapitalize="characters"
               style={styles.input}
               disabled={loading}
+              placeholder="Enter your Student ID"
             />
 
             <TextInput
@@ -250,7 +265,13 @@ const styles = StyleSheet.create({
   warningText: {
     color: '#92400e',
     fontSize: 12,
+    marginBottom: 4,
+  },
+  warningSubtext: {
+    color: '#92400e',
+    fontSize: 11,
     marginBottom: 8,
+    opacity: 0.8,
   },
   retryButton: {
     marginTop: 4,

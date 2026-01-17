@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -34,9 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, MoreHorizontal, Edit, Copy, Trash2, Search, FileText } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Copy, Trash2, Search, FileText, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate, formatDuration } from '@/lib/utils';
+import TimeExtensionModal from '@/components/TimeExtensionModal';
 
 export default function MyExams() {
   const navigate = useNavigate();
@@ -47,6 +49,10 @@ export default function MyExams() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examToDelete, setExamToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [timeExtensionModalOpen, setTimeExtensionModalOpen] = useState(false);
+  const [selectedExamForTime, setSelectedExamForTime] = useState(null);
 
   useEffect(() => {
     loadExams();
@@ -54,6 +60,7 @@ export default function MyExams() {
 
   useEffect(() => {
     filterExams();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [searchQuery, statusFilter, exams]);
 
   const loadExams = async () => {
@@ -125,6 +132,141 @@ export default function MyExams() {
     }
   };
 
+  // Pagination helpers
+  const getPaginatedItems = (items, page, itemsPerPage) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (items, itemsPerPage) => {
+    return Math.ceil(items.length / itemsPerPage);
+  };
+
+  const handleItemsPerPageChange = (newPerPage) => {
+    setItemsPerPage(newPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Paginated data
+  const paginatedExams = getPaginatedItems(filteredExams, currentPage, itemsPerPage);
+  const totalPages = getTotalPages(filteredExams, itemsPerPage);
+
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
+    const totalItems = filteredExams.length;
+    
+    if (totalItems === 0) return null;
+
+    const pages = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    const startItem = ((currentPage - 1) * itemsPerPage) + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-600">
+            Showing {startItem} to {endItem} of {totalItems} exams
+          </div>
+          
+          {/* Length Menu */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="exams-per-page" className="text-sm text-slate-600">
+              Show:
+            </Label>
+            <select
+              id="exams-per-page"
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="h-8 rounded-md border border-slate-300 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          {startPage > 1 && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(1)}
+              >
+                1
+              </Button>
+              {startPage > 2 && <span className="px-2 py-1">...</span>}
+            </>
+          )}
+          
+          {pages.map(page => (
+            <Button
+              key={page}
+              type="button"
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={currentPage === page ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {page}
+            </Button>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 py-1">...</span>}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(totalPages)}
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="p-8">
@@ -186,7 +328,7 @@ export default function MyExams() {
               <>
                 {/* Mobile Card View */}
                 <div className="md:hidden p-4 space-y-4">
-                  {filteredExams.map((exam) => (
+                  {paginatedExams.map((exam) => (
                     <div key={exam.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -236,6 +378,17 @@ export default function MyExams() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            {(exam.status === 'active' || exam.status === 'scheduled') && (
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setSelectedExamForTime(exam);
+                                  setTimeExtensionModalOpen(true);
+                                }}
+                              >
+                                <Clock className="w-4 h-4 mr-2" />
+                                Extend Time
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleDuplicate(exam.id)}>
                               <Copy className="w-4 h-4 mr-2" />
                               Duplicate
@@ -266,6 +419,7 @@ export default function MyExams() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-16">S/N</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Subject</TableHead>
                         <TableHead>Questions</TableHead>
@@ -277,8 +431,11 @@ export default function MyExams() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredExams.map((exam) => (
+                      {paginatedExams.map((exam, index) => (
                         <TableRow key={exam.id} className="hover:bg-slate-50">
+                          <TableCell className="text-slate-500">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </TableCell>
                           <TableCell className="font-medium">{exam.title}</TableCell>
                           <TableCell>{exam.subject}</TableCell>
                           <TableCell>
@@ -300,6 +457,17 @@ export default function MyExams() {
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
+                                {(exam.status === 'active' || exam.status === 'scheduled') && (
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedExamForTime(exam);
+                                      setTimeExtensionModalOpen(true);
+                                    }}
+                                  >
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    Extend Time
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem onClick={() => handleDuplicate(exam.id)}>
                                   <Copy className="w-4 h-4 mr-2" />
                                   Duplicate
@@ -326,6 +494,13 @@ export default function MyExams() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
               </>
             ) : (
               <div className="text-center py-16">
@@ -372,6 +547,17 @@ export default function MyExams() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Time Extension Modal */}
+      <TimeExtensionModal
+        open={timeExtensionModalOpen}
+        onOpenChange={setTimeExtensionModalOpen}
+        examId={selectedExamForTime?.id}
+        examTitle={selectedExamForTime?.title}
+        onSuccess={() => {
+          loadExams(); // Refresh exam list after time extension
+        }}
+      />
     </div>
   );
 }

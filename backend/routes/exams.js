@@ -114,6 +114,8 @@ router.post('/',
         randomize_questions,
         randomize_options,
         enforce_screen_lock,
+        enable_section_distribution,
+        section_distribution,
         status = 'draft'
       } = req.body;
 
@@ -147,13 +149,15 @@ router.post('/',
         INSERT INTO exams (
           teacher_id, title, subject, duration, questions_per_candidate,
           pass_mark, start_date, end_date, show_results, randomize_questions,
-          randomize_options, enforce_screen_lock, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          randomize_options, enforce_screen_lock, enable_section_distribution,
+          section_distribution, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
       `, [
         req.user.id, title, subject, duration, questions_per_candidate,
         pass_mark, start_date, end_date, show_results, randomize_questions,
-        randomize_options, enforce_screen_lock, status
+        randomize_options, enforce_screen_lock, enable_section_distribution,
+        section_distribution ? JSON.stringify(section_distribution) : null, status
       ]);
 
       console.log('Exam created successfully:', result.rows[0].id);
@@ -210,6 +214,8 @@ router.put('/:id', async (req, res) => {
       randomize_questions,
       randomize_options,
       enforce_screen_lock,
+      enable_section_distribution,
+      section_distribution,
       status
     } = req.body;
 
@@ -241,14 +247,19 @@ router.put('/:id', async (req, res) => {
         randomize_questions = COALESCE($9, randomize_questions),
         randomize_options = COALESCE($10, randomize_options),
         enforce_screen_lock = COALESCE($11, enforce_screen_lock),
-        status = COALESCE($12, status),
+        enable_section_distribution = COALESCE($12, enable_section_distribution),
+        section_distribution = COALESCE($13, section_distribution),
+        status = COALESCE($14, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $13
+      WHERE id = $15
       RETURNING *
     `, [
       title, subject, duration, questions_per_candidate, pass_mark,
       start_date, end_date, show_results, randomize_questions,
-      randomize_options, enforce_screen_lock, status, id
+      randomize_options, enforce_screen_lock, 
+      enable_section_distribution,
+      section_distribution ? JSON.stringify(section_distribution) : null,
+      status, id
     ]);
 
     await logActivity(
@@ -335,8 +346,9 @@ router.post('/:id/duplicate', async (req, res) => {
       INSERT INTO exams (
         teacher_id, title, subject, duration, questions_per_candidate,
         total_questions, pass_mark, start_date, end_date, show_results,
-        randomize_questions, randomize_options, enforce_screen_lock, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'draft')
+        randomize_questions, randomize_options, enforce_screen_lock,
+        enable_section_distribution, section_distribution, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'draft')
       RETURNING *
     `, [
       req.user.id,
@@ -351,7 +363,9 @@ router.post('/:id/duplicate', async (req, res) => {
       originalExam.show_results,
       originalExam.randomize_questions,
       originalExam.randomize_options,
-      originalExam.enforce_screen_lock
+      originalExam.enforce_screen_lock,
+      originalExam.enable_section_distribution,
+      originalExam.section_distribution
     ]);
 
     const newExamId = newExamResult.rows[0].id;
@@ -463,13 +477,57 @@ router.post('/:id/candidates', async (req, res) => {
       return crypto.randomBytes(4).toString('hex'); // 8 character password
     };
     
+    // VALIDATION 1: Check for duplicate student IDs within the upload batch
+    const studentIdsInBatch = candidates.map(c => c.student_id).filter(id => id);
+    const duplicatesInBatch = studentIdsInBatch.filter((id, index) => 
+      studentIdsInBatch.indexOf(id) !== index
+    );
+    
+    if (duplicatesInBatch.length > 0) {
+      const uniqueDuplicates = [...new Set(duplicatesInBatch)];
+      throw new Error(
+        `Duplicate Student IDs found in upload file: ${uniqueDuplicates.join(', ')}. ` +
+        `Each student ID must be unique.`
+      );
+    }
+    
+    // VALIDATION 2: Get all candidates already assigned to this exam
+    const examCandidates = await client.query(`
+      SELECT u.student_id, u.name 
+      FROM exam_candidates ec
+      JOIN users u ON ec.candidate_id = u.id
+      WHERE ec.exam_id = $1 AND u.student_id IS NOT NULL
+    `, [id]);
+    
+    const existingStudentIds = new Set(examCandidates.rows.map(c => c.student_id));
+    const existingStudentIdsMap = new Map(
+      examCandidates.rows.map(c => [c.student_id, c.name])
+    );
+    
+    // Check if any student IDs in upload are already assigned to this exam
+    const alreadyInExam = studentIdsInBatch.filter(id => existingStudentIds.has(id));
+    if (alreadyInExam.length > 0) {
+      const details = alreadyInExam.map(id => 
+        `${id} (${existingStudentIdsMap.get(id)})`
+      ).join(', ');
+      throw new Error(
+        `The following Student IDs are already assigned to this exam: ${details}. ` +
+        `Cannot add the same student to an exam twice.`
+      );
+    }
+    
     for (const candidate of candidates) {
       const { name, email, student_id, password } = candidate;
       
-      // Check if user exists
+      // Validate student_id is provided
+      if (!student_id || student_id.trim() === '') {
+        throw new Error(`Student ID is required for candidate: ${name}`);
+      }
+      
+      // Check if user exists by email OR student_id (for this exam context)
       let userResult = await client.query(
-        'SELECT id FROM users WHERE email = $1',
-        [email.toLowerCase()]
+        'SELECT id, student_id FROM users WHERE email = $1 OR (student_id = $2 AND role = \'candidate\')',
+        [email.toLowerCase(), student_id]
       );
 
       let candidateId;
@@ -487,7 +545,14 @@ router.post('/:id/candidates', async (req, res) => {
         
         candidateId = newUserResult.rows[0].id;
       } else {
+        // User exists - use existing candidate
         candidateId = userResult.rows[0].id;
+        
+        // Update student_id if needed (in case it changed)
+        await client.query(
+          'UPDATE users SET student_id = $1 WHERE id = $2',
+          [student_id, candidateId]
+        );
         
         // Update password if provided and user already exists
         if (password) {
@@ -533,7 +598,13 @@ router.post('/:id/candidates', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Add candidates error:', error);
-    res.status(500).json({ error: 'Failed to add candidates' });
+    
+    // Return specific error messages for validation errors
+    if (error.message.includes('Student ID') || error.message.includes('Duplicate')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to add candidates: ' + error.message });
   } finally {
     client.release();
   }
@@ -650,7 +721,9 @@ router.post('/:id/questions', async (req, res) => {
 
     // Add questions
     for (const question of questions) {
+      // Extract fields, ignoring temporary id from frontend (will be auto-generated by DB)
       const {
+        id: tempId, // Extract but don't use - this is a temporary frontend ID
         question_text,
         option_a,
         option_b,
@@ -659,14 +732,51 @@ router.post('/:id/questions', async (req, res) => {
         correct_answer,
         points,
         difficulty,
-        subject
+        subject,
+        is_multi_answer,
+        section_id,
+        instruction,
+        passage
       } = question;
+
+      // Validate required fields
+      if (!question_text || !option_a || !option_b || !correct_answer) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Invalid question data',
+          details: 'Each question must have question_text, option_a, option_b, and correct_answer'
+        });
+      }
+
+      // Normalize and validate correct_answer format
+      let normalizedAnswer = correct_answer.toString().toUpperCase().trim();
+      
+      // Sort multi-answer values for consistency (e.g., "B,A" becomes "A,B")
+      if (normalizedAnswer.includes(',')) {
+        const answers = normalizedAnswer.split(',').map(a => a.trim()).filter(Boolean);
+        normalizedAnswer = answers.sort().join(',');
+      }
+      
+      const answerPattern = /^[A-D](,[A-D])*$/;
+      if (!answerPattern.test(normalizedAnswer)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Invalid answer format',
+          details: `Answer must be A, B, C, D, or comma-separated like A,C. Got: ${correct_answer}`
+        });
+      }
+
+      // Determine if multi-answer
+      const isMulti = is_multi_answer !== undefined 
+        ? is_multi_answer 
+        : normalizedAnswer.includes(',');
 
       await client.query(`
         INSERT INTO questions (
           exam_id, subject, difficulty, question_text, option_a, option_b,
-          option_c, option_d, correct_answer, points
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          option_c, option_d, correct_answer, points, is_multi_answer,
+          section_id, instruction, passage
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `, [
         id,
         subject || examResult.rows[0].subject,
@@ -674,10 +784,14 @@ router.post('/:id/questions', async (req, res) => {
         question_text,
         option_a,
         option_b,
-        option_c || null,
-        option_d || null,
-        correct_answer,
-        points || 1
+        (option_c && option_c.trim()) || null,
+        (option_d && option_d.trim()) || null,
+        normalizedAnswer,
+        points || 1,
+        isMulti,
+        (section_id && section_id.trim()) || null,
+        (instruction && instruction.trim()) || null,
+        (passage && passage.trim()) || null
       ]);
     }
 
@@ -705,6 +819,202 @@ router.post('/:id/questions', async (req, res) => {
     res.status(500).json({ error: 'Failed to add questions' });
   } finally {
     client.release();
+  }
+});
+
+// POST /api/exams/:id/extend-time - Extend time for all students
+router.post('/:id/extend-time', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { minutes } = req.body;
+
+    if (!minutes || minutes < 1) {
+      return res.status(400).json({ error: 'Minutes must be a positive number' });
+    }
+
+    // Check permission
+    const examResult = await db.query(
+      'SELECT teacher_id, title, global_time_extension_minutes FROM exams WHERE id = $1',
+      [id]
+    );
+
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    if (req.user.role === 'teacher' && examResult.rows[0].teacher_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const currentExtension = examResult.rows[0].global_time_extension_minutes || 0;
+    const minutesToAdd = parseInt(minutes);
+    const newExtension = currentExtension + minutesToAdd;
+    const baseDuration = examResult.rows[0].duration;
+
+    // Update global time extension for all students
+    await db.query(
+      'UPDATE exams SET global_time_extension_minutes = $1 WHERE id = $2',
+      [newExtension, id]
+    );
+    
+    console.log(`✅ Extended time globally by ${minutesToAdd} minutes (total extension now: ${newExtension} min)`);
+
+    await logActivity(
+      req.user.id,
+      req.user.name,
+      'exam.extend_time',
+      `Extended time by ${minutes} minutes for all students in exam ${examResult.rows[0].title}`,
+      req.ip
+    );
+
+    res.json({ 
+      message: 'Time extended successfully for all students',
+      total_extension_minutes: newExtension
+    });
+  } catch (error) {
+    console.error('Extend time error:', error);
+    res.status(500).json({ error: 'Failed to extend time' });
+  }
+});
+
+// POST /api/exams/:id/extend-time/:candidateId - Extend time for individual student
+router.post('/:id/extend-time/:candidateId', async (req, res) => {
+  try {
+    const { id, candidateId } = req.params;
+    const { minutes } = req.body;
+
+    if (!minutes || minutes < 1) {
+      return res.status(400).json({ error: 'Minutes must be a positive number' });
+    }
+
+    // Check permission
+    const examResult = await db.query(
+      'SELECT teacher_id, title FROM exams WHERE id = $1',
+      [id]
+    );
+
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    if (req.user.role === 'teacher' && examResult.rows[0].teacher_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Check if student is assigned to this exam
+    const assignmentCheck = await db.query(
+      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
+      [id, candidateId]
+    );
+
+    if (assignmentCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Student not found in this exam' });
+    }
+
+    // Get or create exam attempt
+    const attemptResult = await db.query(
+      'SELECT id, time_extension_minutes FROM exam_attempts WHERE exam_id = $1 AND candidate_id = $2',
+      [id, candidateId]
+    );
+
+    if (attemptResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Student has not started the exam yet' });
+    }
+
+    const currentExtension = attemptResult.rows[0].time_extension_minutes || 0;
+    const minutesToAdd = parseInt(minutes);
+    const newExtension = currentExtension + minutesToAdd;
+
+    // Update individual time extension
+    await db.query(`
+      UPDATE exam_attempts 
+      SET time_extension_minutes = $1
+      WHERE exam_id = $2 AND candidate_id = $3
+    `, [newExtension, id, candidateId]);
+    
+    console.log(`✅ Extended ${minutesToAdd} min for candidate ${candidateId} (total individual extension: ${newExtension} min)`);
+
+    // Get student name for logging
+    const studentResult = await db.query(
+      'SELECT name FROM users WHERE id = $1',
+      [candidateId]
+    );
+
+    await logActivity(
+      req.user.id,
+      req.user.name,
+      'exam.extend_time_individual',
+      `Extended time by ${minutes} minutes for ${studentResult.rows[0].name} in exam ${examResult.rows[0].title}`,
+      req.ip
+    );
+
+    res.json({ 
+      message: 'Time extended successfully for student',
+      total_extension_minutes: newExtension
+    });
+  } catch (error) {
+    console.error('Extend individual time error:', error);
+    res.status(500).json({ error: 'Failed to extend time' });
+  }
+});
+
+// GET /api/exams/:id/active-students - Get list of students currently taking the exam
+router.get('/:id/active-students', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check permission
+    const examResult = await db.query(
+      'SELECT teacher_id, duration, global_time_extension_minutes FROM exams WHERE id = $1',
+      [id]
+    );
+
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    if (req.user.role === 'teacher' && examResult.rows[0].teacher_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const baseDuration = examResult.rows[0].duration;
+    const globalExtension = examResult.rows[0].global_time_extension_minutes || 0;
+
+    // Get all students with their attempt status
+    const result = await db.query(`
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.student_id,
+        ea.status,
+        ea.started_at,
+        ea.submitted_at,
+        ea.time_extension_minutes,
+        CASE 
+          WHEN ea.status = 'in_progress' THEN 
+            GREATEST(0, $2::INTEGER + $3::INTEGER + COALESCE(ea.time_extension_minutes, 0) - 
+              EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ea.started_at))/60)
+          ELSE NULL
+        END as time_remaining_minutes
+      FROM exam_candidates ec
+      JOIN users u ON ec.candidate_id = u.id
+      LEFT JOIN exam_attempts ea ON ea.exam_id = ec.exam_id AND ea.candidate_id = u.id
+      WHERE ec.exam_id = $1
+      ORDER BY 
+        CASE ea.status 
+          WHEN 'in_progress' THEN 1 
+          WHEN 'submitted' THEN 2
+          WHEN 'auto_submitted' THEN 3
+          ELSE 4
+        END,
+        u.name
+    `, [id, baseDuration, globalExtension]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get active students error:', error);
+    res.status(500).json({ error: 'Failed to fetch active students' });
   }
 });
 

@@ -188,6 +188,7 @@ export default function ManageTeachers() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-16">S/N</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
@@ -196,8 +197,11 @@ export default function ManageTeachers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTeachers.map((teacher) => (
+                  {filteredTeachers.map((teacher, index) => (
                     <TableRow key={teacher.id}>
+                      <TableCell className="text-slate-500">
+                        {index + 1}
+                      </TableCell>
                       <TableCell className="font-medium">{teacher.name}</TableCell>
                       <TableCell>{teacher.email}</TableCell>
                       <TableCell>

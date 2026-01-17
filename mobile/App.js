@@ -10,6 +10,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import ExamInstructionsScreen from './src/screens/ExamInstructionsScreen';
 import ExamScreen from './src/screens/ExamScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import ThankYouScreen from './src/screens/ThankYouScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { useAuthStore } from './src/store/authStore';
 
@@ -62,6 +63,7 @@ export default function App() {
           <Stack.Screen name="ExamInstructions" component={ExamInstructionsScreen} />
           <Stack.Screen name="Exam" component={ExamScreen} />
           <Stack.Screen name="Result" component={ResultScreen} />
+          <Stack.Screen name="ThankYou" component={ThankYouScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
         </Stack.Navigator>
       </NavigationContainer>

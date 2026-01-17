@@ -13,9 +13,12 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'uiges_db',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
-  max: 20,
+  max: 200, // Increased from 20 to 200 for 1000 concurrent candidates
+  min: 10, // Minimum 10 connections always ready
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000, // Increased from 2000 to 5000ms
+  acquireTimeoutMillis: 30000, // Max time to wait for a connection
+  maxUses: 7500, // Max uses per connection before recycling
 });
 
 pool.on('error', (err) => {

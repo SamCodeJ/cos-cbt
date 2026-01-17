@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, Card, ActivityIndicator, Divider, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { candidateAPI } from '../api/client';
+import { candidateAPI, SERVER_URL } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 
-const API_BASE_URL = 'http://10.57.236.125:3000'; // Use your computer's IP
+// Use SERVER_URL from client.js instead of hardcoded IP
+// const API_BASE_URL = 'http://10.57.236.125:3000'; 
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -263,7 +264,7 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.profilePicture}>
                   {profile?.profile_picture ? (
                     <Image
-                      source={{ uri: `${API_BASE_URL}${profile.profile_picture}` }}
+                      source={{ uri: `${SERVER_URL}${profile.profile_picture}` }}
                       style={styles.profileImage}
                     />
                   ) : (

@@ -20,7 +20,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, Upload, Download, BookOpen } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Search, Edit, Trash2, Upload, Download, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function QuestionBank() {
@@ -32,6 +33,8 @@ export default function QuestionBank() {
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
     question_text: '',
@@ -43,6 +46,7 @@ export default function QuestionBank() {
     option_d: '',
     correct_answer: 'A',
     points: 1,
+    is_multi_answer: false,
   });
 
   useEffect(() => {
@@ -51,6 +55,7 @@ export default function QuestionBank() {
 
   useEffect(() => {
     filterQuestions();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [searchQuery, subjectFilter, difficultyFilter, questions]);
 
   const loadQuestions = async () => {
@@ -132,7 +137,38 @@ export default function QuestionBank() {
       option_d: '',
       correct_answer: 'A',
       points: 1,
+      is_multi_answer: false,
     });
+  };
+
+  // Handle multi-answer checkbox toggle
+  const handleCorrectAnswerToggle = (option) => {
+    if (!formData.is_multi_answer) {
+      // Single answer mode - just set the value
+      setFormData({ ...formData, correct_answer: option });
+    } else {
+      // Multi-answer mode - toggle the option in comma-separated list
+      const currentAnswers = formData.correct_answer.split(',').filter(a => a);
+      let newAnswers;
+      
+      if (currentAnswers.includes(option)) {
+        // Remove the option
+        newAnswers = currentAnswers.filter(a => a !== option);
+      } else {
+        // Add the option
+        newAnswers = [...currentAnswers, option];
+      }
+      
+      // Sort and join
+      const sortedAnswers = newAnswers.sort().join(',');
+      setFormData({ ...formData, correct_answer: sortedAnswers || 'A' });
+    }
+  };
+
+  // Check if an option is selected as correct
+  const isCorrectAnswer = (option) => {
+    const answers = formData.correct_answer.split(',');
+    return answers.includes(option);
   };
 
   const getDifficultyBadge = (difficulty) => {
@@ -149,6 +185,141 @@ export default function QuestionBank() {
   };
 
   const uniqueSubjects = [...new Set(questions.map(q => q.subject).filter(Boolean))];
+
+  // Pagination helpers
+  const getPaginatedItems = (items, page, itemsPerPage) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (items, itemsPerPage) => {
+    return Math.ceil(items.length / itemsPerPage);
+  };
+
+  const handleItemsPerPageChange = (newPerPage) => {
+    setItemsPerPage(newPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Paginated data
+  const paginatedQuestions = getPaginatedItems(filteredQuestions, currentPage, itemsPerPage);
+  const totalPages = getTotalPages(filteredQuestions, itemsPerPage);
+
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
+    const totalItems = filteredQuestions.length;
+    
+    if (totalItems === 0) return null;
+
+    const pages = [];
+    const maxPagesToShow = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    const startItem = ((currentPage - 1) * itemsPerPage) + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-600">
+            Showing {startItem} to {endItem} of {totalItems} questions
+          </div>
+          
+          {/* Length Menu */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="questions-per-page" className="text-sm text-slate-600">
+              Show:
+            </Label>
+            <select
+              id="questions-per-page"
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="h-8 rounded-md border border-slate-300 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          {startPage > 1 && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(1)}
+              >
+                1
+              </Button>
+              {startPage > 2 && <span className="px-2 py-1">...</span>}
+            </>
+          )}
+          
+          {pages.map(page => (
+            <Button
+              key={page}
+              type="button"
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={currentPage === page ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {page}
+            </Button>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 py-1">...</span>}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(totalPages)}
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -219,8 +390,9 @@ export default function QuestionBank() {
           </CardHeader>
           <CardContent className="p-6">
             {filteredQuestions.length > 0 ? (
-              <div className="space-y-4">
-                {filteredQuestions.map((question, index) => (
+              <>
+                <div className="space-y-4">
+                  {paginatedQuestions.map((question, index) => (
                   <div key={question.id} className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
@@ -231,7 +403,8 @@ export default function QuestionBank() {
                           )}
                         </div>
                         <h4 className="font-medium text-slate-900 mb-2">
-                          {index + 1}. {question.question_text}
+                          <span>{(currentPage - 1) * itemsPerPage + index + 1}. </span>
+                          <span dangerouslySetInnerHTML={{ __html: question.question_text }} />
                         </h4>
                       </div>
                       <div className="flex gap-2">
@@ -254,25 +427,25 @@ export default function QuestionBank() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                       <div className="flex items-center gap-2">
                         <span className={question.correct_answer === 'A' ? 'text-green-600 font-medium' : ''}>
-                          A: {question.option_a}
+                          A: <span dangerouslySetInnerHTML={{ __html: question.option_a }} />
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={question.correct_answer === 'B' ? 'text-green-600 font-medium' : ''}>
-                          B: {question.option_b}
+                          B: <span dangerouslySetInnerHTML={{ __html: question.option_b }} />
                         </span>
                       </div>
                       {question.option_c && (
                         <div className="flex items-center gap-2">
                           <span className={question.correct_answer === 'C' ? 'text-green-600 font-medium' : ''}>
-                            C: {question.option_c}
+                            C: <span dangerouslySetInnerHTML={{ __html: question.option_c }} />
                           </span>
                         </div>
                       )}
                       {question.option_d && (
                         <div className="flex items-center gap-2">
                           <span className={question.correct_answer === 'D' ? 'text-green-600 font-medium' : ''}>
-                            D: {question.option_d}
+                            D: <span dangerouslySetInnerHTML={{ __html: question.option_d }} />
                           </span>
                         </div>
                       )}
@@ -281,8 +454,16 @@ export default function QuestionBank() {
                       Points: {question.points} | Usage: {question.usage_count || 0} exam(s)
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              </>
             ) : (
               <div className="text-center py-16">
                 <BookOpen className="w-16 h-16 mx-auto text-slate-300 mb-4" />
@@ -384,23 +565,92 @@ export default function QuestionBank() {
               />
             </div>
 
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="multi-answer"
+                  checked={formData.is_multi_answer}
+                  onCheckedChange={(checked) => {
+                    setFormData({ 
+                      ...formData, 
+                      is_multi_answer: checked,
+                      correct_answer: checked ? formData.correct_answer : formData.correct_answer.split(',')[0] || 'A'
+                    });
+                  }}
+                />
+                <Label htmlFor="multi-answer" className="text-sm font-normal cursor-pointer">
+                  Multiple correct answers (use checkboxes)
+                </Label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Correct Answer *</Label>
-                <Select
-                  value={formData.correct_answer}
-                  onValueChange={(value) => setFormData({ ...formData, correct_answer: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">A</SelectItem>
-                    <SelectItem value="B">B</SelectItem>
-                    <SelectItem value="C">C</SelectItem>
-                    <SelectItem value="D">D</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Correct Answer{formData.is_multi_answer ? 's' : ''} *</Label>
+                {formData.is_multi_answer ? (
+                  <div className="space-y-2 p-3 border rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="correct-a"
+                        checked={isCorrectAnswer('A')}
+                        onCheckedChange={() => handleCorrectAnswerToggle('A')}
+                      />
+                      <Label htmlFor="correct-a" className="text-sm font-normal cursor-pointer">
+                        Option A
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="correct-b"
+                        checked={isCorrectAnswer('B')}
+                        onCheckedChange={() => handleCorrectAnswerToggle('B')}
+                      />
+                      <Label htmlFor="correct-b" className="text-sm font-normal cursor-pointer">
+                        Option B
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="correct-c"
+                        checked={isCorrectAnswer('C')}
+                        onCheckedChange={() => handleCorrectAnswerToggle('C')}
+                        disabled={!formData.option_c}
+                      />
+                      <Label htmlFor="correct-c" className="text-sm font-normal cursor-pointer">
+                        Option C {!formData.option_c && '(not provided)'}
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="correct-d"
+                        checked={isCorrectAnswer('D')}
+                        onCheckedChange={() => handleCorrectAnswerToggle('D')}
+                        disabled={!formData.option_d}
+                      />
+                      <Label htmlFor="correct-d" className="text-sm font-normal cursor-pointer">
+                        Option D {!formData.option_d && '(not provided)'}
+                      </Label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Selected: {formData.correct_answer || 'None'}
+                    </p>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.correct_answer}
+                    onValueChange={(value) => setFormData({ ...formData, correct_answer: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">A</SelectItem>
+                      <SelectItem value="B">B</SelectItem>
+                      <SelectItem value="C">C</SelectItem>
+                      <SelectItem value="D">D</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Points</Label>

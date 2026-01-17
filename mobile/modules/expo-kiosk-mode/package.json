@@ -1,0 +1,14 @@
+{
+  "name": "expo-kiosk-mode",
+  "version": "1.0.0",
+  "description": "Expo module for kiosk mode functionality",
+  "main": "index.ts",
+  "scripts": {},
+  "keywords": [
+    "expo",
+    "kiosk",
+    "exam"
+  ],
+  "author": "UI-GES",
+  "license": "MIT"
+}
