@@ -49,11 +49,6 @@ export default function ExamInstructionsScreen({ route, navigation }) {
               description={`${exam.questions_per_candidate} questions`}
               left={props => <List.Icon {...props} icon="file-document-outline" />}
             />
-            <List.Item
-              title="Pass Mark"
-              description={`${exam.pass_mark}%`}
-              left={props => <List.Icon {...props} icon="check-circle-outline" />}
-            />
           </Card.Content>
         </Card>
 
@@ -88,13 +83,6 @@ export default function ExamInstructionsScreen({ route, navigation }) {
               <Text style={styles.instructionNumber}>4.</Text>
               <Text style={styles.instructionText}>
                 The exam will automatically submit when the timer expires.
-              </Text>
-            </View>
-
-            <View style={styles.instruction}>
-              <Text style={styles.instructionNumber}>5.</Text>
-              <Text style={styles.instructionText}>
-                Your answers are auto-saved every 30 seconds.
               </Text>
             </View>
           </Card.Content>

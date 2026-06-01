@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "96337adf-39f4-4313-8af1-ec5414edfb40"
+      }
+    },
+    "android": {
+      "package": "com.uiges.mobile"
+    }
+  }
+}

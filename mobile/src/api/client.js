@@ -1,19 +1,18 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IMPORTANT: Update this IP address to match your computer's current IP address
-// Find your IP: Windows (ipconfig) or Mac/Linux (ifconfig)
-// Default backend port is 3001, but check your backend terminal output for the actual port
-// Current IP detected: 10.165.76.146 (update this if your IP changes)
-export const SERVER_URL = 'http://10.165.76.146:3001';
-export const API_BASE_URL = `${SERVER_URL}/api`; // Use computer's IP for physical device
-const API_BASE_URL_INTERNAL = API_BASE_URL; // Keep for backward compatibility
+// ✅ PRODUCTION - Online Backend
+// export const SERVER_URL = 'https://api.uiges.shop';
+// export const API_BASE_URL = `${SERVER_URL}/api`;
+
+// 🔧 DEVELOPMENT - Local Testing (uncomment for local dev)
+export const SERVER_URL = 'http://172.28.232.146:3001';
+export const API_BASE_URL = `${SERVER_URL}/api`;
 
 // Log API configuration on startup
 console.log('📱 UI-GES Mobile App - API Configuration');
 console.log('🔗 API Base URL:', API_BASE_URL);
-console.log('📍 Server IP:', API_BASE_URL.split('/')[2].split(':')[0]);
-console.log('🔌 Server Port:', API_BASE_URL.split(':')[2]?.split('/')[0]);
+console.log('🌐 Environment:', SERVER_URL.includes('https') ? 'PRODUCTION' : 'DEVELOPMENT');
 console.log('---');
 
 const apiClient = axios.create({
@@ -21,7 +20,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // Increased to 30 seconds for production (internet may be slower than local)
 });
 
 // Request interceptor
@@ -48,18 +47,15 @@ apiClient.interceptors.response.use(
     // Enhanced error logging
     if (error.code === 'ECONNABORTED') {
       console.error('❌ Connection timeout - Server took too long to respond');
-      console.error('🔍 Check if backend server is running on:', API_BASE_URL);
+      console.error('🔍 Check your internet connection');
+      console.error('🔍 Backend URL:', API_BASE_URL);
     } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
       console.error('❌ Network Error - Cannot reach server');
       console.error('🔍 Current API URL:', API_BASE_URL);
-      console.error('🔍 Error Code:', error.code);
       console.error('💡 Troubleshooting:');
-      console.error('   1. Check if backend server is running (look for "🚀 Backend running on port...")');
-      console.error('   2. Verify computer IP address hasn\'t changed (check backend terminal output)');
-      console.error('   3. Check PORT number - backend defaults to 3001, not 3000');
-      console.error('   4. Ensure phone and computer are on same WiFi network');
-      console.error('   5. Check Windows Firewall isn\'t blocking the port');
-      console.error('   6. Try accessing the backend from phone browser: http://' + API_BASE_URL.split('/')[2] + '/health');
+      console.error('   1. Check your internet connection');
+      console.error('   2. Verify the backend is online: https://api.uiges.shop/health');
+      console.error('   3. Check if you have mobile data or WiFi enabled');
     } else if (error.response?.status === 401) {
       console.log('🔐 Authentication failed - clearing stored credentials');
       await AsyncStorage.removeItem('auth_token');
@@ -77,11 +73,10 @@ let isTestingConnection = false;
 let lastTestTime = 0;
 const TEST_COOLDOWN = 2000; // 2 seconds cooldown between tests
 
-export const testConnection = async (retries = 1) => {
+export const testConnection = async (retries = 2) => {
   // Prevent multiple simultaneous tests
   const now = Date.now();
   if (isTestingConnection || (now - lastTestTime < TEST_COOLDOWN)) {
-    // Return cached result if testing recently
     return { success: false, message: 'Connection test in progress or too soon' };
   }
   
@@ -92,96 +87,35 @@ export const testConnection = async (retries = 1) => {
     console.log('🏥 Testing backend connection...');
     console.log('📡 Target:', API_BASE_URL);
     
-    const healthUrl = API_BASE_URL.replace('/api', '/health');
+    const healthUrl = `${SERVER_URL}/health`;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         if (attempt > 0) {
           console.log(`🔄 Retry attempt ${attempt}/${retries}...`);
-          // Wait 1 second before retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
         
         const response = await axios.get(healthUrl, {
-          timeout: 10000 // Match the main client timeout
+          timeout: 15000
         });
         console.log('✅ Backend is reachable');
         isTestingConnection = false;
         return { success: true, message: 'Backend is reachable' };
       } catch (error) {
-        // Only log error on last attempt to reduce noise
         if (attempt === retries) {
-          const serverIP = API_BASE_URL.split('/')[2].split(':')[0];
-          const serverPort = API_BASE_URL.split(':')[2]?.split('/')[0] || '3001';
-          
           console.error('❌ Backend is NOT reachable');
           console.error('💡 Error:', error.message);
-          console.error('🔍 Error Code:', error.code);
           console.error('🌐 Attempted URL:', healthUrl);
           console.error('');
           console.error('═══════════════════════════════════════');
-          console.error('🔧 TROUBLESHOOTING STEPS:');
+          console.error('🔧 TROUBLESHOOTING:');
           console.error('═══════════════════════════════════════');
-          
-          let troubleshooting = [];
-          if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-            console.error('⏱️  Connection timeout detected');
-            console.error('');
-            console.error('1. ✅ VERIFY BACKEND IS RUNNING:');
-            console.error('   - Open backend terminal');
-            console.error('   - Look for: "🚀 UI-GES Backend Server running on port ' + serverPort + '"');
-            console.error('   - If not running, start it: cd backend && npm run dev');
-            console.error('');
-            console.error('2. 🔍 CHECK BACKEND TERMINAL OUTPUT:');
-            console.error('   - Should show: "📱 Mobile Device URL: http://' + serverIP + ':' + serverPort + '/api"');
-            console.error('   - Verify the IP matches: ' + serverIP);
-            console.error('');
-            troubleshooting = [
-              'Server is taking too long to respond',
-              'Check if backend server is running',
-              'Try restarting the backend server',
-              'Verify the port number matches backend (check backend terminal)',
-              'Check network connectivity between devices'
-            ];
-          } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-            console.error('🌐 Network error - Cannot reach server');
-            console.error('');
-            console.error('1. ✅ START BACKEND SERVER (if not running):');
-            console.error('   cd backend');
-            console.error('   npm run dev');
-            console.error('   Look for: "🚀 UI-GES Backend Server running on port ' + serverPort + '"');
-            console.error('');
-            console.error('2. 🔍 VERIFY IP ADDRESS:');
-            console.error('   - Run on Windows: ipconfig');
-            console.error('   - Look for "IPv4 Address" under your WiFi adapter');
-            console.error('   - Current app IP: ' + serverIP);
-            console.error('   - If different, update mobile/src/api/client.js line 8');
-            console.error('');
-            console.error('3. 🌐 CHECK NETWORK CONNECTION:');
-            console.error('   - Ensure phone and computer are on SAME WiFi network');
-            console.error('   - Try accessing from phone browser:');
-            console.error('     http://' + serverIP + ':' + serverPort + '/health');
-            console.error('   - Should show: {"status":"ok","timestamp":"..."}');
-            console.error('');
-            console.error('4. 🔥 CHECK WINDOWS FIREWALL:');
-            console.error('   - Windows may be blocking port ' + serverPort);
-            console.error('   - Allow Node.js through firewall');
-            console.error('   - Or temporarily disable firewall for testing');
-            console.error('');
-            troubleshooting = [
-              'Cannot reach server at ' + API_BASE_URL,
-              '1. ✅ Start backend server: cd backend && npm run dev',
-              '2. 🔍 Verify IP address matches (run: ipconfig)',
-              '3. 🌐 Ensure both devices on same WiFi',
-              '4. 🔥 Check Windows Firewall settings',
-              '5. 📱 Test from phone browser: http://' + serverIP + ':' + serverPort + '/health',
-              '6. 🔄 Update API_BASE_URL if IP changed',
-              '7. 🔄 Restart both backend and mobile app'
-            ];
-          }
-          
+          console.error('1. ✅ Check your internet connection');
+          console.error('2. 🌐 Verify backend is online');
+          console.error('3. 📱 Try opening https://api.uiges.shop/health in browser');
+          console.error('4. 🔄 Restart the mobile app');
           console.error('═══════════════════════════════════════');
-          console.error('');
           
           isTestingConnection = false;
           return { 
@@ -190,7 +124,12 @@ export const testConnection = async (retries = 1) => {
             error: error.message,
             errorCode: error.code,
             attemptedUrl: healthUrl,
-            troubleshooting 
+            troubleshooting: [
+              'Check your internet connection',
+              'Verify backend is online at https://api.uiges.shop/health',
+              'Try restarting the app',
+              'Contact support if issue persists'
+            ]
           };
         }
       }
@@ -222,7 +161,7 @@ export const candidateAPI = {
         await AsyncStorage.setItem('auth_token', response.data.token);
         console.log('🔑 Token stored successfully');
         
-        // Store user data - could be candidate, teacher, or admin
+        // Store user data
         const userData = response.data.candidate || response.data.user;
         await AsyncStorage.setItem('candidate', JSON.stringify(userData));
         console.log('💾 Stored user data for:', userData.name);
@@ -235,7 +174,6 @@ export const candidateAPI = {
           console.error('❌ Token not found after storage!');
         }
         
-        // Normalize response format for mobile app
         return {
           token: response.data.token,
           candidate: userData
@@ -344,7 +282,11 @@ export const candidateAPI = {
     const response = await apiClient.get(`/candidate/exams/${examId}/time-remaining`);
     return response.data;
   },
+
+  verifyPin: async (examId, pin) => {
+    const response = await apiClient.post(`/candidate/exams/${examId}/verify-pin`, { pin });
+    return response.data;
+  }
 };
 
 export default apiClient;
-

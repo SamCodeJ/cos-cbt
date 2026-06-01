@@ -51,6 +51,30 @@ export default function ResultScreen({ route, navigation }) {
     }
   };
 
+  const handleReturnToLogin = async () => {
+  try {
+    // Clear auth data
+    await AsyncStorage.removeItem('auth_token');
+    await AsyncStorage.removeItem('candidate');
+    
+    // Call logout from store
+    logout();
+    
+    // Navigate to login
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    // Navigate anyway
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  }
+};
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>

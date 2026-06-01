@@ -1184,5 +1184,52 @@ router.get('/exams/:id/time-remaining', authenticateToken, requireCandidate, asy
   }
 });
 
+// POST /api/candidate/exams/:id/verify-pin - Verify PIN for an exam
+router.post('/exams/:id/verify-pin', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pin } = req.body;
+
+    if (!pin) {
+      return res.status(400).json({ error: 'PIN is required' });
+    }
+
+    // Check if candidate is assigned to this exam
+    const assignmentCheck = await db.query(
+      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
+      [id, req.user.id]
+    );
+
+    if (assignmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not assigned to this exam' });
+    }
+
+    // Get exam PIN
+    const examResult = await db.query(
+      'SELECT exam_pin, require_pin_check FROM exams WHERE id = $1',
+      [id]
+    );
+
+    if (examResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    const { exam_pin, require_pin_check } = examResult.rows[0];
+
+    if (!require_pin_check) {
+      return res.json({ success: true, message: 'PIN check not required for this exam' });
+    }
+
+    if (pin !== exam_pin) {
+      return res.status(400).json({ error: 'Invalid PIN' });
+    }
+
+    res.json({ success: true, message: 'PIN verified successfully' });
+  } catch (error) {
+    console.error('Verify PIN error:', error);
+    res.status(500).json({ error: 'Failed to verify PIN' });
+  }
+});
+
 module.exports = router;
 

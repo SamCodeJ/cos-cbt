@@ -44,7 +44,11 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:8081',
-  'http://localhost:19006'
+  'http://localhost:19006',
+  'https://uiges.shop',
+  'https://www.uiges.shop',
+  'http://uiges.shop',
+  'http://www.uiges.shop'
 ];
 
 app.use(cors({

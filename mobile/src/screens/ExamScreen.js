@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Alert, AppState, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, AppState, Image, TextInput } from 'react-native';
 import { Text, Button, RadioButton, IconButton, Card, Portal, Modal, Chip, Checkbox } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { candidateAPI, API_BASE_URL } from '../api/client';
@@ -22,11 +22,16 @@ export default function ExamScreen({ route, navigation }) {
   const [paletteVisible, setPaletteVisible] = useState(false);
   const [violations, setViolations] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinCheckVisible, setPinCheckVisible] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinAttempts, setPinAttempts] = useState(0);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
 
   const appState = useRef(AppState.currentState);
   const timerRef = useRef(null);
   const autoSaveRef = useRef(null);
   const timeCheckRef = useRef(null);
+  const pinTriggerRef = useRef(null);
 
   useEffect(() => {
     initializeExam();
@@ -35,22 +40,23 @@ export default function ExamScreen({ route, navigation }) {
       const subscription = AppState.addEventListener('change', handleAppStateChange);
       return () => {
         subscription?.remove();
-        clearInterval(timerRef.current);
-        clearInterval(autoSaveRef.current);
-        clearInterval(timeCheckRef.current);
-        // Deactivate kiosk mode on cleanup
+        cleanupTimers();
         KioskMode.deactivate().catch(err => console.error('Cleanup kiosk error:', err));
       };
     }
 
     return () => {
-      clearInterval(timerRef.current);
-      clearInterval(autoSaveRef.current);
-      clearInterval(timeCheckRef.current);
-      // Deactivate kiosk mode on cleanup
+      cleanupTimers();
       KioskMode.deactivate().catch(err => console.error('Cleanup kiosk error:', err));
     };
   }, []);
+
+  const cleanupTimers = () => {
+    clearInterval(timerRef.current);
+    clearInterval(autoSaveRef.current);
+    clearInterval(timeCheckRef.current);
+    clearTimeout(pinTriggerRef.current);
+  };
 
   const initializeExam = async () => {
     // Activate kiosk mode FIRST
@@ -66,6 +72,64 @@ export default function ExamScreen({ route, navigation }) {
     startTimer();
     startAutoSave();
     startTimeCheck(); // Check for time extensions periodically
+    
+    // Setup random PIN trigger if required
+    if (exam.require_pin_check) {
+      setupPinTrigger();
+    }
+  };
+
+  const setupPinTrigger = () => {
+    // Trigger between 10% and 80% of exam duration
+    const minTimeSeconds = exam.duration * 60 * 0.1;
+    const maxTimeSeconds = exam.duration * 60 * 0.8;
+    const randomTriggerSeconds = Math.floor(Math.random() * (maxTimeSeconds - minTimeSeconds + 1)) + minTimeSeconds;
+    
+    console.log(`🔒 PIN check scheduled to trigger in ${randomTriggerSeconds} seconds`);
+    
+    pinTriggerRef.current = setTimeout(() => {
+      setPinCheckVisible(true);
+    }, randomTriggerSeconds * 1000);
+  };
+
+  const verifyPin = async () => {
+    if (!pinValue.trim()) {
+      Alert.alert('Error', 'Please enter a PIN');
+      return;
+    }
+
+    setIsVerifyingPin(true);
+    try {
+      const response = await candidateAPI.verifyPin(exam.id, pinValue);
+      if (response.success) {
+        setPinCheckVisible(false);
+        setPinAttempts(0);
+        setPinValue('');
+        Alert.alert('Success', 'PIN verified successfully. You may continue your exam.');
+      }
+    } catch (error) {
+      const newAttempts = pinAttempts + 1;
+      setPinAttempts(newAttempts);
+      
+      if (newAttempts >= 3) {
+        setPinCheckVisible(false);
+        const violation = {
+          type: 'Failed PIN Verification',
+          timestamp: new Date().toISOString(),
+          description: 'Candidate failed the randomized PIN check 3 times',
+        };
+        
+        setViolations((prevViolations) => {
+          const newViolations = [...prevViolations, violation];
+          handleAutoSubmitWithViolations(newViolations, 'Exam auto-submitted due to 3 failed PIN verification attempts.');
+          return newViolations;
+        });
+      } else {
+        Alert.alert('Invalid PIN', `The PIN you entered is incorrect. You have ${3 - newAttempts} attempt(s) remaining.`);
+      }
+    } finally {
+      setIsVerifyingPin(false);
+    }
   };
 
   // Helper function to convert [IMAGE:...] placeholders to <img> tags with full URLs
@@ -868,12 +932,60 @@ export default function ExamScreen({ route, navigation }) {
         </View>
       </View>
 
+      {/* PIN Verification Modal */}
+      <Portal>
+        <Modal
+          visible={pinCheckVisible}
+          dismissable={false}
+          contentContainerStyle={styles.modalContent}
+          style={{ zIndex: 100 }}
+        >
+          <Text variant="titleMedium" style={[styles.modalTitle, { color: '#d97706' }]}>
+            Invigilator PIN Check
+          </Text>
+          <Text variant="bodyMedium" style={{ marginBottom: 16, textAlign: 'center' }}>
+            Please enter the PIN written on the board to continue your exam.
+          </Text>
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1' }}>
+              <TextInput
+                placeholder="Enter PIN"
+                value={pinValue}
+                onChangeText={setPinValue}
+                style={{
+                  fontSize: 24,
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  letterSpacing: 4,
+                  width: '100%',
+                  backgroundColor: 'transparent',
+                  borderWidth: 0,
+                }}
+              />
+            </View>
+            <Text variant="bodySmall" style={{ color: '#ef4444', marginTop: 8, textAlign: 'center', minHeight: 20 }}>
+              {pinAttempts > 0 ? `${3 - pinAttempts} attempt(s) remaining` : ''}
+            </Text>
+          </View>
+          <Button
+            mode="contained"
+            onPress={verifyPin}
+            loading={isVerifyingPin}
+            disabled={isVerifyingPin || !pinValue}
+            style={{ backgroundColor: '#d97706' }}
+          >
+            Verify PIN
+          </Button>
+        </Modal>
+      </Portal>
+
       {/* Question Palette Modal */}
       <Portal>
         <Modal
           visible={paletteVisible}
           onDismiss={() => setPaletteVisible(false)}
           contentContainerStyle={styles.modalContent}
+          style={{ zIndex: 100 }}
         >
           <Text variant="titleMedium" style={styles.modalTitle}>
             Question Palette

@@ -41,6 +41,8 @@ CREATE TABLE exams (
     randomize_questions BOOLEAN DEFAULT true,
     randomize_options BOOLEAN DEFAULT false,
     enforce_screen_lock BOOLEAN DEFAULT true,
+    require_pin_check BOOLEAN DEFAULT false,
+    exam_pin VARCHAR(20),
     status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'active', 'completed')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

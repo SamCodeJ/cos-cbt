@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 5.2.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "node": "22.11.0",
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "node": "22.11.0",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "node": "22.11.0",
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

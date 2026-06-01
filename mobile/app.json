@@ -27,7 +27,11 @@
         "REORDER_TASKS"
       ],
       "userInterfaceStyle": "light"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b43d0c3d-fc46-447d-9b9f-a39bb994dcdb"
+      }
     }
   }
 }
-

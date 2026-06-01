@@ -359,6 +359,12 @@ export default function MyExams() {
                           <span className="text-slate-500">Start:</span>
                           <span className="ml-2 font-medium text-slate-900">{formatDate(exam.start_date)}</span>
                         </div>
+                        {exam.require_pin_check && (
+                          <div className="col-span-2 bg-amber-50 p-2 rounded border border-amber-100 mt-1 flex justify-between items-center">
+                            <span className="text-amber-800 text-xs font-semibold">📍 PIN Check Enabled</span>
+                            <span className="font-mono font-bold text-amber-900 bg-amber-200 px-2 py-0.5 rounded">{exam.exam_pin}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2 pt-2 border-t border-slate-200">
@@ -427,6 +433,7 @@ export default function MyExams() {
                         <TableHead>Duration</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Start Date</TableHead>
+                        <TableHead className="text-center">PIN</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -445,6 +452,15 @@ export default function MyExams() {
                           <TableCell>{formatDuration(exam.duration)}</TableCell>
                           <TableCell>{getStatusBadge(exam.status)}</TableCell>
                           <TableCell>{formatDate(exam.start_date)}</TableCell>
+                          <TableCell className="text-center">
+                            {exam.require_pin_check ? (
+                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200" title="PIN Check Enabled">
+                                {exam.exam_pin}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

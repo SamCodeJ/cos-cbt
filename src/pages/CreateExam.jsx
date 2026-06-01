@@ -35,6 +35,8 @@ const examSchema = z.object({
   randomize_questions: z.boolean(),
   randomize_options: z.boolean(),
   enforce_screen_lock: z.boolean(),
+  require_pin_check: z.boolean().optional().default(false),
+  exam_pin: z.string().max(20).optional().nullable(),
 }).refine((data) => {
   // Validate that end_date is after start_date
   if (data.start_date && data.end_date) {
@@ -68,6 +70,8 @@ export default function CreateExam() {
       randomize_questions: true,
       randomize_options: false,
       enforce_screen_lock: true,
+      require_pin_check: false,
+      exam_pin: '',
       show_results: true,
       pass_mark: 50,
       status: 'draft',
@@ -78,6 +82,7 @@ export default function CreateExam() {
   const randomizeQuestions = watch('randomize_questions');
   const randomizeOptions = watch('randomize_options');
   const enforceScreenLock = watch('enforce_screen_lock');
+  const requirePinCheck = watch('require_pin_check');
   const questionsPerCandidate = watch('questions_per_candidate');
 
   useEffect(() => {
@@ -1470,6 +1475,42 @@ export default function CreateExam() {
                       checked={enforceScreenLock}
                       onCheckedChange={(checked) => setValue('enforce_screen_lock', checked)}
                     />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="require_pin_check">Randomized PIN Verification</Label>
+                        <p className="text-sm text-slate-500">
+                          Randomly prompt students to enter a PIN written on the board during the exam to prevent remote cheating
+                        </p>
+                      </div>
+                      <Switch
+                        id="require_pin_check"
+                        checked={requirePinCheck}
+                        onCheckedChange={(checked) => setValue('require_pin_check', checked)}
+                      />
+                    </div>
+                    
+                    {requirePinCheck && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="exam_pin">Exam PIN *</Label>
+                          <Input
+                            id="exam_pin"
+                            placeholder="e.g., 4928"
+                            {...register('exam_pin')}
+                            className={errors.exam_pin ? 'border-red-500' : ''}
+                          />
+                          {errors.exam_pin && (
+                            <p className="text-sm text-red-500">{errors.exam_pin.message}</p>
+                          )}
+                          <p className="text-xs text-amber-800 mt-1">
+                            Write this PIN on the board in the exam hall. Students will be randomly asked to enter it during the exam.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Section-Based Question Distribution */}

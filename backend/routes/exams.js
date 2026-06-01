@@ -116,6 +116,8 @@ router.post('/',
         enforce_screen_lock,
         enable_section_distribution,
         section_distribution,
+        require_pin_check,
+        exam_pin,
         status = 'draft'
       } = req.body;
 
@@ -150,14 +152,15 @@ router.post('/',
           teacher_id, title, subject, duration, questions_per_candidate,
           pass_mark, start_date, end_date, show_results, randomize_questions,
           randomize_options, enforce_screen_lock, enable_section_distribution,
-          section_distribution, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          section_distribution, require_pin_check, exam_pin, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *
       `, [
         req.user.id, title, subject, duration, questions_per_candidate,
         pass_mark, start_date, end_date, show_results, randomize_questions,
         randomize_options, enforce_screen_lock, enable_section_distribution,
-        section_distribution ? JSON.stringify(section_distribution) : null, status
+        section_distribution ? JSON.stringify(section_distribution) : null, 
+        require_pin_check || false, exam_pin || null, status
       ]);
 
       console.log('Exam created successfully:', result.rows[0].id);
@@ -216,6 +219,8 @@ router.put('/:id', async (req, res) => {
       enforce_screen_lock,
       enable_section_distribution,
       section_distribution,
+      require_pin_check,
+      exam_pin,
       status
     } = req.body;
 
@@ -249,9 +254,11 @@ router.put('/:id', async (req, res) => {
         enforce_screen_lock = COALESCE($11, enforce_screen_lock),
         enable_section_distribution = COALESCE($12, enable_section_distribution),
         section_distribution = COALESCE($13, section_distribution),
-        status = COALESCE($14, status),
+        require_pin_check = COALESCE($14, require_pin_check),
+        exam_pin = COALESCE($15, exam_pin),
+        status = COALESCE($16, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $15
+      WHERE id = $17
       RETURNING *
     `, [
       title, subject, duration, questions_per_candidate, pass_mark,
@@ -259,6 +266,7 @@ router.put('/:id', async (req, res) => {
       randomize_options, enforce_screen_lock, 
       enable_section_distribution,
       section_distribution ? JSON.stringify(section_distribution) : null,
+      require_pin_check, exam_pin,
       status, id
     ]);
 
@@ -347,8 +355,8 @@ router.post('/:id/duplicate', async (req, res) => {
         teacher_id, title, subject, duration, questions_per_candidate,
         total_questions, pass_mark, start_date, end_date, show_results,
         randomize_questions, randomize_options, enforce_screen_lock,
-        enable_section_distribution, section_distribution, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'draft')
+        enable_section_distribution, section_distribution, require_pin_check, exam_pin, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'draft')
       RETURNING *
     `, [
       req.user.id,
@@ -365,7 +373,9 @@ router.post('/:id/duplicate', async (req, res) => {
       originalExam.randomize_options,
       originalExam.enforce_screen_lock,
       originalExam.enable_section_distribution,
-      originalExam.section_distribution
+      originalExam.section_distribution,
+      originalExam.require_pin_check,
+      originalExam.exam_pin
     ]);
 
     const newExamId = newExamResult.rows[0].id;
