@@ -199,7 +199,7 @@ npm list expo-screen-orientation
 
 Expected output:
 ```
-ui-ges-mobile@1.0.0
+c-cos-mobile@1.0.0
 └── expo-screen-orientation@9.0.8
 ```
 

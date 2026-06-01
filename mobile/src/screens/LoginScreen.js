@@ -100,7 +100,7 @@ export default function LoginScreen({ navigation }) {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>UI-GES</Text>
+          <Text style={styles.title}>C-COS</Text>
           <Text style={styles.subtitle}>Computer-Based Testing System</Text>
         </View>
 

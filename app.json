@@ -6,7 +6,7 @@
       }
     },
     "android": {
-      "package": "com.uiges.mobile"
+      "package": "com.ccos.mobile"
     }
   }
 }

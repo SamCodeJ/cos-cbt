@@ -1,5 +1,5 @@
 @echo off
-REM UI-GES - Upload deployment scripts to VPS
+REM C-COS - Upload deployment scripts to VPS
 REM Windows batch script
 
 echo ====================================

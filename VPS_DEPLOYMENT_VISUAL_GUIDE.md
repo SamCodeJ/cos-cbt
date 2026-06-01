@@ -1,6 +1,6 @@
 # 🎨 VPS Deployment Visual Guide
 
-**Visual diagrams and flowcharts for UI-GES deployment**
+**Visual diagrams and flowcharts for C-COS deployment**
 
 ---
 
@@ -78,7 +78,7 @@
 │  ┌──────────────────────────────────────────────────────────────────┐ │
 │  │                     BACKUP SYSTEM                                │ │
 │  │  Daily automated backups at 2 AM                                │ │
-│  │  Location: /home/uiges/backups/                                 │ │
+│  │  Location: /home/ccos/backups/                                 │ │
 │  │  Retention: 7 days                                               │ │
 │  └──────────────────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────┘
@@ -468,7 +468,7 @@ Your Domain Registrar
                     ▼
         ┌───────────────────────┐
         │  Save to:             │
-        │  /home/uiges/backups/ │
+        │  /home/ccos/backups/ │
         └───────────────────────┘
                     │
                     ▼
@@ -484,14 +484,14 @@ Your Domain Registrar
     ║   IF DISASTER HAPPENS:          ║
     ║                                 ║
     ║   1. Stop backend:              ║
-    ║      pm2 stop uiges-backend     ║
+    ║      pm2 stop ccos-backend     ║
     ║                                 ║
     ║   2. Restore from backup:       ║
     ║      gunzip -c backup.sql.gz |  ║
     ║      psql -U user -d gesDB      ║
     ║                                 ║
     ║   3. Restart backend:           ║
-    ║      pm2 restart uiges-backend  ║
+    ║      pm2 restart ccos-backend  ║
     ╚═════════════════════════════════╝
 ```
 
@@ -545,7 +545,7 @@ Your Domain Registrar
 ## 🎯 File Organization
 
 ```
-/home/uiges/UI-GES-1/
+/home/ccos/C-COS-1/
 │
 ├── deploy-scripts/          ← Deployment automation
 │   ├── vps-setup.sh
@@ -588,7 +588,7 @@ Your Domain Registrar
 │   ├── DNS_CONFIGURATION_GUIDE.md
 │   └── VPS_TROUBLESHOOTING_GUIDE.md
 │
-└── /home/uiges/backups/     ← Database backups
+└── /home/ccos/backups/     ← Database backups
     ├── backup.sh
     └── gesDB_*.sql.gz
 ```
@@ -608,7 +608,7 @@ Code changes made locally
          ▼
     ┌──────────────────────┐
     │ SSH to VPS           │
-    │ cd /home/uiges/...   │
+    │ cd /home/ccos/...   │
     └──────────────────────┘
          │
          ▼

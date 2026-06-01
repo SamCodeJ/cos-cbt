@@ -2,7 +2,7 @@
 
 ## ✅ Changes Completed
 
-The UI-GES logo (uigeslogo.png) has been successfully integrated across both the web and mobile applications.
+The C-COS logo (uigeslogo.png) has been successfully integrated across both the web and mobile applications.
 
 ---
 

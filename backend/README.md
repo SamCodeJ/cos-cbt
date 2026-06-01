@@ -1,6 +1,6 @@
-# UI-GES Backend API
+# C-COS Backend API
 
-Node.js + Express + PostgreSQL backend for the UI-GES Computer-Based Testing System.
+Node.js + Express + PostgreSQL backend for the C-COS Computer-Based Testing System.
 
 ## 🎯 Features
 

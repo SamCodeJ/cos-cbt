@@ -14,7 +14,7 @@
 .\check-production-backend.ps1
 
 # 2. If backend is healthy, SSH to server and run:
-# ssh your-username@api.uiges.shop
+# ssh your-username@api.ccos.shop
 # psql -U your_db_user -d ui_ges
 # UPDATE exams SET enable_section_distribution = false;
 # \q
@@ -24,7 +24,7 @@
 
 **Option 2: Quick SSH Command**
 ```bash
-ssh your-username@api.uiges.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false;'"
+ssh your-username@api.ccos.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false;'"
 ```
 
 ## 📁 Files I Created for You
@@ -127,13 +127,13 @@ Is backend running?
 
 ### Run Health Check (Windows)
 ```powershell
-cd "C:\Users\Donation\Documents\ReactProjects\UI-GES-1"
+cd "C:\Users\Donation\Documents\ReactProjects\C-COS-1"
 .\check-production-backend.ps1
 ```
 
 ### Run Health Check (Linux/Mac)
 ```bash
-cd ~/ReactProjects/UI-GES-1
+cd ~/ReactProjects/C-COS-1
 chmod +x check-production-backend.sh
 ./check-production-backend.sh
 ```
@@ -141,10 +141,10 @@ chmod +x check-production-backend.sh
 ### Run Database Diagnostics
 ```bash
 # 1. Transfer to server
-scp diagnose-production-issue.sql your-username@api.uiges.shop:/tmp/
+scp diagnose-production-issue.sql your-username@api.ccos.shop:/tmp/
 
 # 2. SSH and run
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 psql -U your_db_user -d ui_ges -f /tmp/diagnose-production-issue.sql
 
 # 3. Review output
@@ -153,10 +153,10 @@ psql -U your_db_user -d ui_ges -f /tmp/diagnose-production-issue.sql
 ### Apply Database Fix
 ```bash
 # 1. Transfer to server
-scp fix-production-exams.sql your-username@api.uiges.shop:/tmp/
+scp fix-production-exams.sql your-username@api.ccos.shop:/tmp/
 
 # 2. SSH and connect
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 psql -U your_db_user -d ui_ges
 
 # 3. Review and run appropriate fix from the file
@@ -167,17 +167,17 @@ psql -U your_db_user -d ui_ges
 
 ### Fix 1: Disable Section Distribution
 ```bash
-ssh your-username@api.uiges.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false, section_distribution = NULL WHERE enable_section_distribution = true;'"
+ssh your-username@api.ccos.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false, section_distribution = NULL WHERE enable_section_distribution = true;'"
 ```
 
 ### Fix 2: Check Question Count
 ```bash
-ssh your-username@api.uiges.shop "psql -U your_db_user -d ui_ges -c 'SELECT exam_id, COUNT(*) FROM questions GROUP BY exam_id;'"
+ssh your-username@api.ccos.shop "psql -U your_db_user -d ui_ges -c 'SELECT exam_id, COUNT(*) FROM questions GROUP BY exam_id;'"
 ```
 
 ### Fix 3: View Exam Configuration
 ```bash
-ssh your-username@api.uiges.shop "psql -U your_db_user -d ui_ges -c 'SELECT id, title, enable_section_distribution, section_distribution, status FROM exams WHERE status = '\''active'\'';'"
+ssh your-username@api.ccos.shop "psql -U your_db_user -d ui_ges -c 'SELECT id, title, enable_section_distribution, section_distribution, status FROM exams WHERE status = '\''active'\'';'"
 ```
 
 ## 📝 Notes
@@ -230,7 +230,7 @@ After applying fixes, you should see:
    ```bash
    pm2 logs backend
    # or
-   docker logs ui-ges-backend
+   docker logs c-cos-backend
    ```
 
 2. **Database Connection:**
@@ -275,7 +275,7 @@ If you're still stuck:
 **Most likely fix:** Run this one command and your app will work:
 
 ```bash
-ssh your-username@api.uiges.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false;'"
+ssh your-username@api.ccos.shop "psql -U your_db_user -d ui_ges -c 'UPDATE exams SET enable_section_distribution = false;'"
 ```
 
 Then test your mobile app!

@@ -1,6 +1,6 @@
 # ✅ Logo Setup Complete!
 
-Your lightbulb logo has been configured throughout the UI-GES application!
+Your lightbulb logo has been configured throughout the C-COS application!
 
 ## 🎉 What's Working Now
 

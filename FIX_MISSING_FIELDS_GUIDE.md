@@ -105,7 +105,7 @@ After the migration, you can:
 
 ## 🌐 Accessing Your Production Database
 
-Your production database is likely hosted at: **https://api.uiges.shop**
+Your production database is likely hosted at: **https://api.ccos.shop**
 
 ### Common connection methods:
 

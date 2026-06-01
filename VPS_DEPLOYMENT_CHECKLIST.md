@@ -1,6 +1,6 @@
 # ✅ VPS Deployment Checklist
 
-**Complete step-by-step checklist for deploying UI-GES to production**
+**Complete step-by-step checklist for deploying C-COS to production**
 
 ---
 
@@ -68,13 +68,13 @@
 - [ ] Code uploaded to VPS
   
   **Option chosen:**
-  - [ ] Git clone: `git clone YOUR_REPO_URL /home/uiges/UI-GES-1`
-  - [ ] SCP upload: `scp -r . uiges@YOUR_VPS_IP:/home/uiges/UI-GES-1`
+  - [ ] Git clone: `git clone YOUR_REPO_URL /home/ccos/C-COS-1`
+  - [ ] SCP upload: `scp -r . ccos@YOUR_VPS_IP:/home/ccos/C-COS-1`
   - [ ] FileZilla/WinSCP upload
 
 - [ ] Verified code is in place
   ```bash
-  ls -la /home/uiges/UI-GES-1
+  ls -la /home/ccos/C-COS-1
   # Should see: backend/, mobile/, desktop/, src/, etc.
   ```
 
@@ -82,14 +82,14 @@
 
 ## 🔧 Backend Deployment
 
-- [ ] Switched to uiges user
+- [ ] Switched to ccos user
   ```bash
-  su - uiges
+  su - ccos
   ```
 
 - [ ] Navigated to project
   ```bash
-  cd /home/uiges/UI-GES-1
+  cd /home/ccos/C-COS-1
   ```
 
 - [ ] Made backend script executable
@@ -111,7 +111,7 @@
 - [ ] Verified backend is running
   ```bash
   pm2 status
-  # uiges-backend should show "online"
+  # ccos-backend should show "online"
   ```
 
 - [ ] Tested backend health
@@ -124,7 +124,7 @@
   ```bash
   curl -X POST http://localhost:3001/api/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@uiges.com","password":"password"}'
+    -d '{"email":"admin@ccos.com","password":"password"}'
   # Should return token and user info
   ```
 
@@ -229,7 +229,7 @@
 - [ ] Opened web portal: `https://yourdomain.com`
 
 - [ ] Tested admin login
-  - Email: `admin@uiges.com`
+  - Email: `admin@ccos.com`
   - Password: `password`
   - [ ] Login successful
 
@@ -250,7 +250,7 @@
   - [ ] Can view demo results
 
 - [ ] Tested teacher login
-  - Email: `teacher@uiges.com`
+  - Email: `teacher@ccos.com`
   - Password: `password`
   - [ ] Login successful
   - [ ] Sees limited access (no admin features)
@@ -264,11 +264,11 @@
   **Admin password:**
   ```bash
   # On VPS, connect to database
-  psql -U uiges_user -d gesDB -h localhost
+  psql -U ccos_user -d gesDB -h localhost
   
   # Change admin password
   UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) 
-  WHERE email = 'admin@uiges.com';
+  WHERE email = 'admin@ccos.com';
   
   \q
   ```
@@ -276,10 +276,10 @@
 
   **Teacher password:**
   ```bash
-  psql -U uiges_user -d gesDB -h localhost
+  psql -U ccos_user -d gesDB -h localhost
   
   UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) 
-  WHERE email = 'teacher@uiges.com';
+  WHERE email = 'teacher@ccos.com';
   
   \q
   ```
@@ -287,7 +287,7 @@
 
 - [ ] Updated backend CORS
   ```bash
-  nano /home/uiges/UI-GES-1/backend/.env
+  nano /home/ccos/C-COS-1/backend/.env
   # Verify CORS_ORIGIN is correct
   ```
 
@@ -309,24 +309,24 @@
 
 - [ ] Verified backup script exists
   ```bash
-  ls -la /home/uiges/backups/backup.sh
+  ls -la /home/ccos/backups/backup.sh
   ```
 
 - [ ] Tested backup manually
   ```bash
-  /home/uiges/backups/backup.sh
+  /home/ccos/backups/backup.sh
   ```
 
 - [ ] Verified backup file created
   ```bash
-  ls -la /home/uiges/backups/
+  ls -la /home/ccos/backups/
   # Should see: gesDB_YYYYMMDD_HHMMSS.sql.gz
   ```
 
 - [ ] Verified cron job for automatic backups
   ```bash
   crontab -l
-  # Should see: 0 2 * * * /home/uiges/backups/backup.sh
+  # Should see: 0 2 * * * /home/ccos/backups/backup.sh
   ```
 
 ---
@@ -344,13 +344,13 @@
 - [ ] Updated backend CORS for mobile
   ```bash
   # On VPS
-  nano /home/uiges/UI-GES-1/backend/server.js
+  nano /home/ccos/C-COS-1/backend/server.js
   # Verify allowedOrigins allows mobile (no origin)
   ```
 
 - [ ] Restarted backend
   ```bash
-  pm2 restart uiges-backend
+  pm2 restart ccos-backend
   ```
 
 - [ ] Tested mobile login from dev environment
@@ -413,7 +413,7 @@
 
 - [ ] Ran health check
   ```bash
-  cd /home/uiges/UI-GES-1
+  cd /home/ccos/C-COS-1
   ./deploy-scripts/health-check.sh
   ```
 
@@ -452,7 +452,7 @@
 - [ ] Setup health check cron
   ```bash
   crontab -e
-  # Add: 0 * * * * /home/uiges/UI-GES-1/deploy-scripts/health-check.sh >> /home/uiges/logs/health.log 2>&1
+  # Add: 0 * * * * /home/ccos/C-COS-1/deploy-scripts/health-check.sh >> /home/ccos/logs/health.log 2>&1
   ```
 
 - [ ] Setup SSL renewal cron
@@ -568,7 +568,7 @@
 
 - [ ] Monthly database backups verification
   ```bash
-  ls -lh /home/uiges/backups/
+  ls -lh /home/ccos/backups/
   ```
 
 - [ ] Quarterly SSL certificate check
@@ -603,13 +603,13 @@
 
 ## 🎉 Deployment Complete!
 
-**Congratulations! Your UI-GES system is now live and serving users.**
+**Congratulations! Your C-COS system is now live and serving users.**
 
 ### Your System URLs:
 
 - **Web Portal**: https://yourdomain.com
 - **API**: https://api.yourdomain.com
-- **Admin Login**: admin@uiges.com / [your-new-password]
+- **Admin Login**: admin@ccos.com / [your-new-password]
 
 ### Quick Commands Reference:
 
@@ -620,15 +620,15 @@ sudo systemctl status nginx
 sudo systemctl status postgresql
 
 # View logs
-pm2 logs uiges-backend
+pm2 logs ccos-backend
 sudo tail -f /var/log/nginx/error.log
 
 # Restart services
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 sudo systemctl restart nginx
 
 # Health check
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 ./deploy-scripts/health-check.sh
 
 # Update application

@@ -5,13 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Find your IP: Windows (ipconfig) or Mac/Linux (ifconfig)
 // Default backend port is 3001, but check your backend terminal output for the actual port
 // Current IP detected: 10.165.76.146 (update this if your IP changes)
-// export const SERVER_URL = 'https://api.uiges.shop';
+// export const SERVER_URL = 'https://api.ccos.shop';
 export const SERVER_URL = 'http://10.165.76.146:3001';
 export const API_BASE_URL = `${SERVER_URL}/api`; // Use computer's IP for physical device
 const API_BASE_URL_INTERNAL = API_BASE_URL; // Keep for backward compatibility
 
 // Log API configuration on startup
-console.log('📱 UI-GES Mobile App - API Configuration');
+console.log('📱 C-COS Mobile App - API Configuration');
 console.log('🔗 API Base URL:', API_BASE_URL);
 console.log('📍 Server IP:', API_BASE_URL.split('/')[2].split(':')[0]);
 console.log('🔌 Server Port:', API_BASE_URL.split(':')[2]?.split('/')[0]);
@@ -130,7 +130,7 @@ export const testConnection = async (retries = 1) => {
             console.error('');
             console.error('1. ✅ VERIFY BACKEND IS RUNNING:');
             console.error('   - Open backend terminal');
-            console.error('   - Look for: "🚀 UI-GES Backend Server running on port ' + serverPort + '"');
+            console.error('   - Look for: "🚀 C-COS Backend Server running on port ' + serverPort + '"');
             console.error('   - If not running, start it: cd backend && npm run dev');
             console.error('');
             console.error('2. 🔍 CHECK BACKEND TERMINAL OUTPUT:');
@@ -150,7 +150,7 @@ export const testConnection = async (retries = 1) => {
             console.error('1. ✅ START BACKEND SERVER (if not running):');
             console.error('   cd backend');
             console.error('   npm run dev');
-            console.error('   Look for: "🚀 UI-GES Backend Server running on port ' + serverPort + '"');
+            console.error('   Look for: "🚀 C-COS Backend Server running on port ' + serverPort + '"');
             console.error('');
             console.error('2. 🔍 VERIFY IP ADDRESS:');
             console.error('   - Run on Windows: ipconfig');

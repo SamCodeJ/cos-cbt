@@ -679,6 +679,6 @@ Before buying hardware, verify:
 ---
 
 **Last Updated:** January 17, 2026
-**For:** UI-GES CBT System v1.0
+**For:** C-COS CBT System v1.0
 **Target:** 1000 Concurrent Users
 

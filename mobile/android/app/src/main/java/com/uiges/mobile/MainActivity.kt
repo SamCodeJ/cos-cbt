@@ -1,4 +1,4 @@
-package com.uiges.mobile
+package com.ccos.mobile
 
 import android.os.Build
 import android.os.Bundle

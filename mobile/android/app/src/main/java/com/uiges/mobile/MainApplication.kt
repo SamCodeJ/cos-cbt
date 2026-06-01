@@ -1,4 +1,4 @@
-package com.uiges.mobile
+package com.ccos.mobile
 
 import android.app.Application
 import android.content.res.Configuration

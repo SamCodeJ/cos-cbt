@@ -1,12 +1,12 @@
 # 🎉 VPS Deployment Package Created!
 
-**Complete deployment documentation and scripts for UI-GES**
+**Complete deployment documentation and scripts for C-COS**
 
 ---
 
 ## 📦 What's Been Created
 
-I've created a complete VPS deployment package for your UI-GES system with:
+I've created a complete VPS deployment package for your C-COS system with:
 
 ### 📚 Documentation (6 files)
 
@@ -164,7 +164,7 @@ Your deployment will follow this process:
 ## 📂 File Structure
 
 ```
-UI-GES-1/
+C-COS-1/
 ├── DEPLOYMENT_DOCS_INDEX.md          ⭐ START HERE
 ├── QUICK_START_VPS_DEPLOYMENT.md     Quick deployment guide
 ├── VPS_DEPLOYMENT_GUIDE.md           Comprehensive manual
@@ -330,7 +330,7 @@ You now have:
 ✅ Troubleshooting resources  
 ✅ Maintenance procedures  
 
-**Everything you need to deploy UI-GES to your VPS!**
+**Everything you need to deploy C-COS to your VPS!**
 
 ---
 
@@ -350,7 +350,7 @@ When you make changes to your code:
 
 1. Push to your repository (if using Git)
 2. SSH to VPS
-3. Run: `cd /home/uiges/UI-GES-1 && ./deploy-scripts/update-app.sh`
+3. Run: `cd /home/ccos/C-COS-1 && ./deploy-scripts/update-app.sh`
 4. Choose what to update (backend/frontend/both)
 
 ---
@@ -372,7 +372,7 @@ When you make changes to your code:
 
 ## 🌟 Success!
 
-Your UI-GES Computer-Based Testing system will be accessible at:
+Your C-COS Computer-Based Testing system will be accessible at:
 
 - **Web Portal**: https://yourdomain.com
 - **API**: https://api.yourdomain.com

@@ -1,4 +1,4 @@
-# UI-GES - Business Documentation
+# C-COS - Business Documentation
 ## Computer-Based Testing System
 
 ---
@@ -17,7 +17,7 @@
 
 ## SYSTEM OVERVIEW
 
-**UI-GES** is a comprehensive, enterprise-grade Computer-Based Testing (CBT) system designed for educational institutions, training centers, and organizations conducting assessments. The system consists of three integrated platforms:
+**C-COS** is a comprehensive, enterprise-grade Computer-Based Testing (CBT) system designed for educational institutions, training centers, and organizations conducting assessments. The system consists of three integrated platforms:
 
 - **Web Portal** - For administrators and teachers to manage exams, questions, and results
 - **Mobile App** - For candidates to take exams on smartphones (Android/iOS)
@@ -288,7 +288,7 @@
 
 ### 2.5 COMPARED TO TRADITIONAL PAPER EXAMS
 
-| Feature | Paper Exams | UI-GES Digital |
+| Feature | Paper Exams | C-COS Digital |
 |---------|-------------|----------------|
 | **Grading Time** | Hours to days | Instant |
 | **Cost per Exam** | $2-5 (paper, printing) | $0 (after setup) |
@@ -313,7 +313,7 @@ Storage & Facilities: $2,000/year
 Total Annual Cost: $42,000/year
 ```
 
-**UI-GES Digital System:**
+**C-COS Digital System:**
 ```
 Software License: $8,000/year (see pricing)
 Server Maintenance: $1,500/year
@@ -1225,7 +1225,7 @@ Backup Storage (Separate region)
 ```
 Teachers/Admins:  https://yourschool.uiges.cloud (web browser)
 Desktop Candidates: https://yourschool.uiges.cloud/candidate (web browser)
-Mobile Candidates:  Download "UI-GES [Your School]" from app stores
+Mobile Candidates:  Download "C-COS [Your School]" from app stores
 ```
 
 ### 5.2 ON-PREMISE DEPLOYMENT (Perpetual License)
@@ -1651,13 +1651,13 @@ Grading Labor:       [hours] × [$/hour] = $______
 Storage:             $______
 Total Traditional:   $______
 
-Annual UI-GES Costs:
+Annual C-COS Costs:
 License Fee:         $______
 Server/Maintenance:  $______
-Total UI-GES:        $______
+Total C-COS:        $______
 
 Annual Savings:      $______
-ROI %:               [(Savings ÷ UI-GES Cost) × 100]%
+ROI %:               [(Savings ÷ C-COS Cost) × 100]%
 Payback Period:      [One-time cost ÷ Annual Savings] years
 ```
 
@@ -1675,7 +1675,7 @@ Payback Period:      [One-time cost ÷ Annual Savings] years
 ─────────────────────────────────────────────────
 Total:                                  $15,499
 
-+ UI-GES Software License               $25,000
++ C-COS Software License               $25,000
 ─────────────────────────────────────────────────
 Grand Total:                            $40,499
 ```
@@ -1718,7 +1718,7 @@ Total: 6 weeks from purchase to production
 
 **Document Version:** 1.0
 **Last Updated:** January 17, 2026
-**Prepared For:** UI-GES Business Development
+**Prepared For:** C-COS Business Development
 
 ---
 

@@ -5,12 +5,12 @@
 # Run this to verify your production server is properly configured
 # ========================================
 
-echo "🏥 UI-GES Production Backend Health Check"
+echo "🏥 C-COS Production Backend Health Check"
 echo "=========================================="
 echo ""
 
 # Configuration
-PRODUCTION_URL="https://api.uiges.shop"
+PRODUCTION_URL="https://api.ccos.shop"
 API_URL="${PRODUCTION_URL}/api"
 
 # Colors for output

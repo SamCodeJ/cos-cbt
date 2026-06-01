@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# UI-GES VPS Initial Setup Script
+# C-COS VPS Initial Setup Script
 # This script automates the initial VPS setup process
 # Run as root or with sudo privileges
 
 set -e  # Exit on error
 
 echo "======================================"
-echo "UI-GES VPS Setup Script"
+echo "C-COS VPS Setup Script"
 echo "======================================"
 echo ""
 
@@ -41,12 +41,12 @@ echo ""
 echo "======================================"
 echo "Step 2: Creating Application User"
 echo "======================================"
-if id "uiges" &>/dev/null; then
-    echo "User 'uiges' already exists"
+if id "ccos" &>/dev/null; then
+    echo "User 'ccos' already exists"
 else
-    adduser --disabled-password --gecos "" uiges
-    usermod -aG sudo uiges
-    echo "User 'uiges' created"
+    adduser --disabled-password --gecos "" ccos
+    usermod -aG sudo ccos
+    echo "User 'ccos' created"
 fi
 
 echo ""
@@ -87,14 +87,14 @@ echo "======================================"
 # Create database and user
 sudo -u postgres psql <<EOF
 CREATE DATABASE gesDB;
-CREATE USER uiges_user WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE gesDB TO uiges_user;
+CREATE USER ccos_user WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE gesDB TO ccos_user;
 \c gesDB
-GRANT ALL ON SCHEMA public TO uiges_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO uiges_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO uiges_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO uiges_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO uiges_user;
+GRANT ALL ON SCHEMA public TO ccos_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ccos_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ccos_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ccos_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ccos_user;
 EOF
 echo "Database 'gesDB' created successfully"
 
@@ -125,23 +125,23 @@ echo ""
 echo "======================================"
 echo "Step 10: Creating directories"
 echo "======================================"
-mkdir -p /home/uiges/backups
-mkdir -p /home/uiges/logs
-chown -R uiges:uiges /home/uiges
+mkdir -p /home/ccos/backups
+mkdir -p /home/ccos/logs
+chown -R ccos:ccos /home/ccos
 echo "Directories created"
 
 echo ""
 echo "======================================"
 echo "Step 11: Creating backup script"
 echo "======================================"
-cat > /home/uiges/backups/backup.sh <<'EOFBACKUP'
+cat > /home/ccos/backups/backup.sh <<'EOFBACKUP'
 #!/bin/bash
-BACKUP_DIR="/home/uiges/backups"
+BACKUP_DIR="/home/ccos/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/gesDB_$DATE.sql"
 
 # Backup database
-PGPASSWORD="REPLACE_WITH_DB_PASSWORD" pg_dump -U uiges_user -h localhost gesDB > $BACKUP_FILE
+PGPASSWORD="REPLACE_WITH_DB_PASSWORD" pg_dump -U ccos_user -h localhost gesDB > $BACKUP_FILE
 
 # Compress backup
 gzip $BACKUP_FILE
@@ -153,9 +153,9 @@ echo "Backup completed: $BACKUP_FILE.gz"
 EOFBACKUP
 
 # Replace password in backup script
-sed -i "s/REPLACE_WITH_DB_PASSWORD/$DB_PASSWORD/g" /home/uiges/backups/backup.sh
-chmod +x /home/uiges/backups/backup.sh
-chown uiges:uiges /home/uiges/backups/backup.sh
+sed -i "s/REPLACE_WITH_DB_PASSWORD/$DB_PASSWORD/g" /home/ccos/backups/backup.sh
+chmod +x /home/ccos/backups/backup.sh
+chown ccos:ccos /home/ccos/backups/backup.sh
 
 echo ""
 echo "======================================"
@@ -167,11 +167,11 @@ echo "----------------------"
 echo "Domain: $DOMAIN"
 echo "Email: $EMAIL"
 echo "Database: gesDB"
-echo "Database User: uiges_user"
-echo "Application User: uiges"
+echo "Database User: ccos_user"
+echo "Application User: ccos"
 echo ""
 echo "Next Steps:"
-echo "1. Upload your code to /home/uiges/UI-GES-1"
+echo "1. Upload your code to /home/ccos/C-COS-1"
 echo "2. Run the deployment script: ./deploy-backend.sh"
 echo "3. Run the web deployment script: ./deploy-web.sh"
 echo "4. Configure DNS records for $DOMAIN"

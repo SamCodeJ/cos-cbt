@@ -70,7 +70,7 @@ export default function Dashboard() {
                 <span className="text-white font-bold text-lg">UI</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">UI-GES Candidate Portal</h1>
+                <h1 className="text-xl font-bold text-slate-900">C-COS Candidate Portal</h1>
                 <p className="text-sm text-slate-600">{candidate?.name || 'Student'}</p>
               </div>
             </div>

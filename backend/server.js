@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const os = require('os');
 require('dotenv').config();
-// UI-GES Backend Server
+// C-COS Backend Server
 
 const db = require('./database/db');
 const authRoutes = require('./routes/auth');
@@ -45,10 +45,10 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:8081',
   'http://localhost:19006',
-  'https://uiges.shop',
-  'https://www.uiges.shop',
-  'http://uiges.shop',
-  'http://www.uiges.shop'
+  'https://ccos.shop',
+  'https://www.ccos.shop',
+  'http://ccos.shop',
+  'http://www.ccos.shop'
 ];
 
 app.use(cors({
@@ -144,7 +144,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', async () => {
   const localIP = getLocalIPAddress();
   
-  console.log(`🚀 UI-GES Backend Server running on port ${PORT}`);
+  console.log(`🚀 C-COS Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
   console.log(`📱 Mobile Device URL: http://${localIP}:${PORT}/api`);

@@ -1,4 +1,4 @@
-# 🚀 Quick Start: Deploy UI-GES to VPS
+# 🚀 Quick Start: Deploy C-COS to VPS
 
 **Get your system running in under 30 minutes!**
 
@@ -51,25 +51,25 @@ This script will install:
 **Option A: Using Git**
 
 ```bash
-# On VPS as uiges user
-su - uiges
-cd /home/uiges
-git clone https://github.com/YOUR_USERNAME/UI-GES-1.git
-cd UI-GES-1
+# On VPS as ccos user
+su - ccos
+cd /home/ccos
+git clone https://github.com/YOUR_USERNAME/C-COS-1.git
+cd C-COS-1
 ```
 
 **Option B: Using SCP**
 
 ```bash
 # From your local machine (in project folder)
-cd c:\Users\Donation\Documents\ReactProjects\UI-GES-1
-scp -r . uiges@YOUR_VPS_IP:/home/uiges/UI-GES-1
+cd c:\Users\Donation\Documents\ReactProjects\C-COS-1
+scp -r . ccos@YOUR_VPS_IP:/home/ccos/C-COS-1
 ```
 
 **Option C: Using FileZilla/WinSCP**
 - Connect to: YOUR_VPS_IP
-- Username: uiges
-- Upload entire project to: /home/uiges/UI-GES-1
+- Username: ccos
+- Upload entire project to: /home/ccos/C-COS-1
 
 ---
 
@@ -77,7 +77,7 @@ scp -r . uiges@YOUR_VPS_IP:/home/uiges/UI-GES-1
 
 ```bash
 # On VPS
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 
 # Make script executable
 chmod +x deploy-scripts/deploy-backend.sh
@@ -109,7 +109,7 @@ curl http://localhost:3001/health
 
 ```bash
 # Still on VPS
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 
 # Make script executable
 chmod +x deploy-scripts/deploy-web.sh
@@ -168,7 +168,7 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com -d api.yourdomain.c
 
 **Web Portal:**
 - Open browser: `https://yourdomain.com`
-- Login: `admin@uiges.com` / `password`
+- Login: `admin@ccos.com` / `password`
 - Should see dashboard
 
 **API:**
@@ -202,12 +202,12 @@ After successful deployment:
 
 ```bash
 # Connect to database
-psql -U uiges_user -d gesDB -h localhost
+psql -U ccos_user -d gesDB -h localhost
 
 # Change admin password (in psql)
-UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) WHERE email = 'admin@uiges.com';
+UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) WHERE email = 'admin@ccos.com';
 
-UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) WHERE email = 'teacher@uiges.com';
+UPDATE users SET password_hash = crypt('YOUR_NEW_PASSWORD', gen_salt('bf')) WHERE email = 'teacher@ccos.com';
 
 \q
 ```
@@ -274,7 +274,7 @@ On your **local development machine**:
 
 **Check Status:**
 ```bash
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 chmod +x deploy-scripts/health-check.sh
 ./deploy-scripts/health-check.sh
 ```
@@ -282,7 +282,7 @@ chmod +x deploy-scripts/health-check.sh
 **View Logs:**
 ```bash
 # Backend logs
-pm2 logs uiges-backend
+pm2 logs ccos-backend
 
 # Nginx logs
 sudo tail -f /var/log/nginx/access.log
@@ -292,7 +292,7 @@ sudo tail -f /var/log/nginx/error.log
 **Restart Services:**
 ```bash
 # Restart backend
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 
 # Restart Nginx
 sudo systemctl restart nginx
@@ -303,7 +303,7 @@ sudo systemctl restart postgresql
 
 **Update Application:**
 ```bash
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 chmod +x deploy-scripts/update-app.sh
 ./deploy-scripts/update-app.sh
 ```
@@ -328,10 +328,10 @@ ping yourdomain.com
 ```bash
 # Check backend
 pm2 status
-pm2 logs uiges-backend
+pm2 logs ccos-backend
 
 # Restart if needed
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 ```
 
 ### SSL certificate issues
@@ -359,8 +359,8 @@ After deployment, optimize for your user load:
 **For 500-1000 concurrent users:**
 ```bash
 # Scale backend
-pm2 delete uiges-backend
-pm2 start backend/server.js -i 4 --name "uiges-backend"
+pm2 delete ccos-backend
+pm2 start backend/server.js -i 4 --name "ccos-backend"
 pm2 save
 ```
 
@@ -390,19 +390,19 @@ pm2 save
 
 ## 🎉 Success!
 
-Your UI-GES system is now live at:
+Your C-COS system is now live at:
 
 - **Web Portal**: https://yourdomain.com
 - **API**: https://api.yourdomain.com
-- **Admin Login**: admin@uiges.com / [your-new-password]
-- **Teacher Login**: teacher@uiges.com / [your-new-password]
+- **Admin Login**: admin@ccos.com / [your-new-password]
+- **Teacher Login**: teacher@ccos.com / [your-new-password]
 
 ---
 
 ## 📞 Next Steps
 
 1. **Customize branding**
-   - Upload your logo to `/home/uiges/UI-GES-1/public/`
+   - Upload your logo to `/home/ccos/C-COS-1/public/`
    - Update colors in `tailwind.config.js`
 
 2. **Train your team**

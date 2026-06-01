@@ -184,10 +184,10 @@ ERROR:  permission denied to create database
 
 2. **Grant privileges properly**
    ```sql
-   GRANT ALL PRIVILEGES ON DATABASE gesDB TO uiges_user;
+   GRANT ALL PRIVILEGES ON DATABASE gesDB TO ccos_user;
    \c gesDB
-   GRANT ALL ON SCHEMA public TO uiges_user;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO uiges_user;
+   GRANT ALL ON SCHEMA public TO ccos_user;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ccos_user;
    ```
 
 ---
@@ -249,21 +249,21 @@ Error running migrations: relation "users" already exists
 
 1. **Check if tables already exist**
    ```bash
-   psql -U uiges_user -d gesDB -h localhost
+   psql -U ccos_user -d gesDB -h localhost
    \dt
    # If tables exist, migrations already ran
    ```
 
 2. **Reset database (WARNING: Deletes all data)**
    ```bash
-   psql -U uiges_user -d gesDB -h localhost
+   psql -U ccos_user -d gesDB -h localhost
    DROP SCHEMA public CASCADE;
    CREATE SCHEMA public;
-   GRANT ALL ON SCHEMA public TO uiges_user;
+   GRANT ALL ON SCHEMA public TO ccos_user;
    \q
    
    # Run migrations again
-   cd /home/uiges/UI-GES-1/backend
+   cd /home/ccos/C-COS-1/backend
    npm run db:migrate
    ```
 
@@ -282,7 +282,7 @@ Error: Cannot find module 'express'
 
 1. **Install dependencies**
    ```bash
-   cd /home/uiges/UI-GES-1/backend
+   cd /home/ccos/C-COS-1/backend
    npm install --production
    ```
 
@@ -327,7 +327,7 @@ Error: listen EADDRINUSE: address already in use :::3001
 3. **Check PM2 isn't already running it**
    ```bash
    pm2 status
-   pm2 delete uiges-backend
+   pm2 delete ccos-backend
    ```
 
 ---
@@ -356,7 +356,7 @@ Error: jwt must be provided
 
 3. **Restart backend**
    ```bash
-   pm2 restart uiges-backend
+   pm2 restart ccos-backend
    ```
 
 ---
@@ -393,7 +393,7 @@ Access to XMLHttpRequest blocked by CORS policy
 
 4. **Restart backend**
    ```bash
-   pm2 restart uiges-backend
+   pm2 restart ccos-backend
    ```
 
 ---
@@ -438,7 +438,7 @@ Browser shows: "502 Bad Gateway"
 1. **Check backend is running**
    ```bash
    pm2 status
-   # uiges-backend should be "online"
+   # ccos-backend should be "online"
    
    curl http://localhost:3001/health
    # Should return {"status":"ok"}
@@ -446,7 +446,7 @@ Browser shows: "502 Bad Gateway"
 
 2. **Check Nginx proxy settings**
    ```bash
-   sudo nano /etc/nginx/sites-available/uiges-web
+   sudo nano /etc/nginx/sites-available/ccos-web
    # Verify proxy_pass http://localhost:3001;
    ```
 
@@ -457,7 +457,7 @@ Browser shows: "502 Bad Gateway"
 
 4. **Restart both services**
    ```bash
-   pm2 restart uiges-backend
+   pm2 restart ccos-backend
    sudo systemctl restart nginx
    ```
 
@@ -474,7 +474,7 @@ Browser shows: "502 Bad Gateway"
 
 1. **Check Nginx configuration has try_files**
    ```bash
-   sudo nano /etc/nginx/sites-available/uiges-web
+   sudo nano /etc/nginx/sites-available/ccos-web
    ```
    
    Should have:
@@ -684,7 +684,7 @@ Browser shows: "Your connection is not private"
 
 4. **Restart backend**
    ```bash
-   pm2 restart uiges-backend
+   pm2 restart ccos-backend
    ```
 
 ---
@@ -743,14 +743,14 @@ SSL certificate problem
 
 3. **Scale backend with PM2**
    ```bash
-   pm2 delete uiges-backend
-   pm2 start backend/server.js -i 4 --name "uiges-backend"
+   pm2 delete ccos-backend
+   pm2 start backend/server.js -i 4 --name "ccos-backend"
    pm2 save
    ```
 
 4. **Enable Nginx caching**
    ```bash
-   sudo nano /etc/nginx/sites-available/uiges-web
+   sudo nano /etc/nginx/sites-available/ccos-web
    # Add caching directives (see deployment guide)
    ```
 
@@ -773,8 +773,8 @@ free -h shows >90% memory used
 
 2. **Reduce PM2 instances**
    ```bash
-   pm2 delete uiges-backend
-   pm2 start backend/server.js -i 2 --name "uiges-backend"
+   pm2 delete ccos-backend
+   pm2 start backend/server.js -i 2 --name "ccos-backend"
    ```
 
 3. **Add swap space**
@@ -799,7 +799,7 @@ free -h shows >90% memory used
 
 1. **Add database indexes**
    ```sql
-   psql -U uiges_user -d gesDB -h localhost
+   psql -U ccos_user -d gesDB -h localhost
    
    CREATE INDEX IF NOT EXISTS idx_exam_attempts_candidate ON exam_attempts(candidate_id);
    CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam ON exam_attempts(exam_id);
@@ -845,7 +845,7 @@ free -h shows >90% memory used
    ssh-keygen -t rsa -b 4096
    
    # Copy to VPS
-   ssh-copy-id uiges@YOUR_VPS_IP
+   ssh-copy-id ccos@YOUR_VPS_IP
    
    # Disable password auth
    sudo nano /etc/ssh/sshd_config
@@ -879,7 +879,7 @@ free -h shows >90% memory used
    ```bash
    # Change database password
    sudo -u postgres psql
-   ALTER USER uiges_user WITH PASSWORD 'NEW_STRONG_PASSWORD';
+   ALTER USER ccos_user WITH PASSWORD 'NEW_STRONG_PASSWORD';
    \q
    
    # Update backend/.env
@@ -899,14 +899,14 @@ free -h shows >90% memory used
 
 ```bash
 # Stop backend
-pm2 stop uiges-backend
+pm2 stop ccos-backend
 
 # Restore database
-cd /home/uiges/backups
-gunzip -c gesDB_YYYYMMDD_HHMMSS.sql.gz | psql -U uiges_user -d gesDB -h localhost
+cd /home/ccos/backups
+gunzip -c gesDB_YYYYMMDD_HHMMSS.sql.gz | psql -U ccos_user -d gesDB -h localhost
 
 # Restart backend
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 ```
 
 ---
@@ -924,11 +924,11 @@ sudo systemctl stop nginx
 sudo -u postgres psql
 DROP DATABASE gesDB;
 CREATE DATABASE gesDB;
-GRANT ALL PRIVILEGES ON DATABASE gesDB TO uiges_user;
+GRANT ALL PRIVILEGES ON DATABASE gesDB TO ccos_user;
 \q
 
 # Re-run deployment
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 ./deploy-scripts/deploy-backend.sh
 ./deploy-scripts/deploy-web.sh
 ```
@@ -952,11 +952,11 @@ sudo systemctl status nginx
 sudo systemctl status postgresql
 
 # Recent logs
-pm2 logs uiges-backend --lines 50 --nostream
+pm2 logs ccos-backend --lines 50 --nostream
 sudo tail -50 /var/log/nginx/error.log
 
 # Health check
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 ./deploy-scripts/health-check.sh
 ```
 
@@ -964,7 +964,7 @@ cd /home/uiges/UI-GES-1
 
 ### Common Log Locations
 
-- **Backend logs**: `pm2 logs uiges-backend`
+- **Backend logs**: `pm2 logs ccos-backend`
 - **Nginx access**: `/var/log/nginx/access.log`
 - **Nginx error**: `/var/log/nginx/error.log`
 - **PostgreSQL**: `/var/log/postgresql/postgresql-14-main.log`

@@ -1,4 +1,4 @@
-# UI-GES - ONE-PAGE OVERVIEW
+# C-COS - ONE-PAGE OVERVIEW
 **Computer-Based Testing System**
 
 ---
@@ -7,7 +7,7 @@
 
 Stop wasting time grading papers. Eliminate printing costs. Get instant results.
 
-**UI-GES is a complete exam management system with:**
+**C-COS is a complete exam management system with:**
 - 📱 Mobile app for students (iOS & Android)
 - 💻 Web portal for teachers and admins
 - 🖥️ Desktop portal for computer labs
@@ -129,7 +129,7 @@ Storage:                $5,000/year
 Total Annual:           $775,000
 ```
 
-### UI-GES Digital System:
+### C-COS Digital System:
 ```
 Software (one-time):    $25,000
 Server hardware:        $10,000
@@ -167,7 +167,7 @@ Year 2+ Annual:         $4,000
 
 ---
 
-## WHY CHOOSE UI-GES?
+## WHY CHOOSE C-COS?
 
 ### ✅ COMPLETE SOLUTION
 Not just an exam engine - includes admin portal, mobile app, desktop portal.
@@ -199,11 +199,11 @@ Real-time dashboards, detailed reports, performance insights.
 
 ### 1️⃣ FREE DEMO (30 minutes)
 See the system in action. Ask questions.
-**Book now:** sales@uiges.com
+**Book now:** sales@ccos.com
 
 ### 2️⃣ FREE TRIAL (14 days)
 Test with up to 50 users. No credit card required.
-**Sign up:** https://uiges.com/trial
+**Sign up:** https://ccos.com/trial
 
 ### 3️⃣ PILOT PROGRAM ($500)
 Run 1-2 real exams with real students.
@@ -211,7 +211,7 @@ Cost credited toward purchase.
 
 ### 4️⃣ CUSTOM QUOTE
 For enterprise, multi-site, or custom needs.
-**Contact:** sales@uiges.com
+**Contact:** sales@ccos.com
 
 ---
 
@@ -231,7 +231,7 @@ For enterprise, multi-site, or custom needs.
 
 ## CUSTOMER SUCCESS
 
-> *"UI-GES transformed how we conduct assessments. The ROI was clear within the first semester."*  
+> *"C-COS transformed how we conduct assessments. The ROI was clear within the first semester."*  
 > — Dr. Emily Rodriguez, Dean of Academics
 
 > *"Students love the mobile app. Zero training needed for candidates."*  
@@ -293,7 +293,7 @@ For enterprise, multi-site, or custom needs.
 
 ---
 
-## WHO USES UI-GES?
+## WHO USES C-COS?
 
 ### Perfect For:
 
@@ -341,7 +341,7 @@ A: Yes. Full data export anytime (CSV, JSON, SQL).
 
 ## COMPARISON WITH COMPETITORS
 
-| Feature | UI-GES | Typical Competitor |
+| Feature | C-COS | Typical Competitor |
 |---------|--------|-------------------|
 | **Mobile App** | ✅ iOS & Android | ✅ Mobile-only OR web-only |
 | **Desktop Portal** | ✅ Yes | ❌ Usually no |
@@ -363,22 +363,22 @@ A: Yes. Full data export anytime (CSV, JSON, SQL).
 **📞 CONTACT US TODAY**
 
 **Sales & Inquiries:**
-- Email: sales@uiges.com
+- Email: sales@ccos.com
 - Phone: +1 (XXX) XXX-XXXX
-- Web: https://uiges.com
+- Web: https://ccos.com
 
 **Technical Support:**
-- Email: support@uiges.com
-- Portal: https://support.uiges.com
+- Email: support@ccos.com
+- Portal: https://support.ccos.com
 
 **Business Hours:**
 - Monday-Friday: 8 AM - 6 PM EST
 - 24/7 Support: Enterprise customers
 
 **Social Media:**
-- LinkedIn: /company/uiges
-- Twitter: @uiges
-- YouTube: /uiges (video demos)
+- LinkedIn: /company/ccos
+- Twitter: @ccos
+- YouTube: /ccos (video demos)
 
 ---
 
@@ -389,21 +389,21 @@ A: Yes. Full data export anytime (CSV, JSON, SQL).
 - ✅ Free on-site training session ($2,000 value)
 - ✅ Free white-label customization ($3,000 value)
 
-**Limited time offer. Contact sales@uiges.com with code: DEMO2026**
+**Limited time offer. Contact sales@ccos.com with code: DEMO2026**
 
 ---
 
 **Don't wait another semester.**  
 **Transform your testing process today.**
 
-**Join hundreds of institutions worldwide who have modernized with UI-GES.**
+**Join hundreds of institutions worldwide who have modernized with C-COS.**
 
 ---
 
-*UI-GES Technologies, Inc.*  
+*C-COS Technologies, Inc.*  
 *Making Assessment Effortless Since 2024*
 
 *Last Updated: January 17, 2026*  
 *Version 1.0*
 
-*For detailed documentation, visit: https://uiges.com/docs*
+*For detailed documentation, visit: https://ccos.com/docs*

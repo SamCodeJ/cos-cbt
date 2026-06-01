@@ -4,7 +4,7 @@ This guide will help you set up the desktop candidate portal for use in computer
 
 ## 🎯 Overview
 
-The UI-GES system now includes **two candidate interfaces**:
+The C-COS system now includes **two candidate interfaces**:
 
 1. **Mobile App** (`/mobile` folder) - For smartphones and tablets
 2. **Desktop Web Portal** (`/desktop` folder) - **NEW!** For PCs and laptops in examination halls
@@ -225,7 +225,7 @@ curl http://192.168.1.100:3001/health
 ## 📂 File Structure
 
 ```
-UI-GES-1/
+C-COS-1/
 ├── desktop/           # 🆕 NEW Desktop Portal
 │   ├── src/
 │   │   ├── api/      # API client

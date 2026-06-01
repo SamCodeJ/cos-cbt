@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# UI-GES Backend Deployment Script
-# Run this from /home/uiges/UI-GES-1 directory
+# C-COS Backend Deployment Script
+# Run this from /home/ccos/C-COS-1 directory
 
 set -e
 
 echo "======================================"
-echo "UI-GES Backend Deployment"
+echo "C-COS Backend Deployment"
 echo "======================================"
 echo ""
 
 # Check if we're in the right directory
 if [ ! -d "backend" ]; then
     echo "Error: backend directory not found!"
-    echo "Please run this script from /home/uiges/UI-GES-1"
+    echo "Please run this script from /home/ccos/C-COS-1"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ NODE_ENV=production
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=gesDB
-DB_USER=uiges_user
+DB_USER=ccos_user
 DB_PASSWORD=$DB_PASSWORD
 
 # JWT Configuration
@@ -83,8 +83,8 @@ echo ""
 echo "======================================"
 echo "Step 6: Setting up PM2"
 echo "======================================"
-pm2 delete uiges-backend || true
-pm2 start server.js --name "uiges-backend" -i 2
+pm2 delete ccos-backend || true
+pm2 start server.js --name "ccos-backend" -i 2
 pm2 save
 pm2 startup | grep "sudo" | bash || echo "PM2 startup already configured"
 
@@ -97,7 +97,7 @@ echo "Backend Status:"
 pm2 status
 
 echo ""
-echo "View logs with: pm2 logs uiges-backend"
+echo "View logs with: pm2 logs ccos-backend"
 echo "Backend API running on: http://localhost:3001"
 echo ""
 echo "IMPORTANT: Save this JWT secret securely!"

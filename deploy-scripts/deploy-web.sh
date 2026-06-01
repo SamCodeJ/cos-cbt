@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# UI-GES Web Portal Deployment Script
-# Run this from /home/uiges/UI-GES-1 directory
+# C-COS Web Portal Deployment Script
+# Run this from /home/ccos/C-COS-1 directory
 
 set -e
 
 echo "======================================"
-echo "UI-GES Web Portal Deployment"
+echo "C-COS Web Portal Deployment"
 echo "======================================"
 echo ""
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
     echo "Error: package.json not found!"
-    echo "Please run this script from /home/uiges/UI-GES-1"
+    echo "Please run this script from /home/ccos/C-COS-1"
     exit 1
 fi
 
@@ -58,12 +58,12 @@ echo ""
 echo "======================================"
 echo "Step 5: Creating Nginx configuration"
 echo "======================================"
-sudo tee /etc/nginx/sites-available/uiges-web > /dev/null <<EOF
+sudo tee /etc/nginx/sites-available/ccos-web > /dev/null <<EOF
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
     
-    root /home/uiges/UI-GES-1/dist;
+    root /home/ccos/C-COS-1/dist;
     index index.html;
     
     # Enable compression
@@ -123,7 +123,7 @@ echo "======================================"
 echo "Step 6: Enabling Nginx site"
 echo "======================================"
 sudo rm -f /etc/nginx/sites-enabled/default
-sudo ln -sf /etc/nginx/sites-available/uiges-web /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/ccos-web /etc/nginx/sites-enabled/
 
 echo ""
 echo "======================================"

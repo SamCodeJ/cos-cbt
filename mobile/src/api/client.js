@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ PRODUCTION - Online Backend
-// export const SERVER_URL = 'https://api.uiges.shop';
+// export const SERVER_URL = 'https://api.ccos.shop';
 // export const API_BASE_URL = `${SERVER_URL}/api`;
 
 // 🔧 DEVELOPMENT - Local Testing (uncomment for local dev)
@@ -10,7 +10,7 @@ export const SERVER_URL = 'http://172.28.232.146:3001';
 export const API_BASE_URL = `${SERVER_URL}/api`;
 
 // Log API configuration on startup
-console.log('📱 UI-GES Mobile App - API Configuration');
+console.log('📱 C-COS Mobile App - API Configuration');
 console.log('🔗 API Base URL:', API_BASE_URL);
 console.log('🌐 Environment:', SERVER_URL.includes('https') ? 'PRODUCTION' : 'DEVELOPMENT');
 console.log('---');
@@ -54,7 +54,7 @@ apiClient.interceptors.response.use(
       console.error('🔍 Current API URL:', API_BASE_URL);
       console.error('💡 Troubleshooting:');
       console.error('   1. Check your internet connection');
-      console.error('   2. Verify the backend is online: https://api.uiges.shop/health');
+      console.error('   2. Verify the backend is online: https://api.ccos.shop/health');
       console.error('   3. Check if you have mobile data or WiFi enabled');
     } else if (error.response?.status === 401) {
       console.log('🔐 Authentication failed - clearing stored credentials');
@@ -113,7 +113,7 @@ export const testConnection = async (retries = 2) => {
           console.error('═══════════════════════════════════════');
           console.error('1. ✅ Check your internet connection');
           console.error('2. 🌐 Verify backend is online');
-          console.error('3. 📱 Try opening https://api.uiges.shop/health in browser');
+          console.error('3. 📱 Try opening https://api.ccos.shop/health in browser');
           console.error('4. 🔄 Restart the mobile app');
           console.error('═══════════════════════════════════════');
           
@@ -126,7 +126,7 @@ export const testConnection = async (retries = 2) => {
             attemptedUrl: healthUrl,
             troubleshooting: [
               'Check your internet connection',
-              'Verify backend is online at https://api.uiges.shop/health',
+              'Verify backend is online at https://api.ccos.shop/health',
               'Try restarting the app',
               'Contact support if issue persists'
             ]

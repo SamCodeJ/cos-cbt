@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kiosk Mode has been implemented for the UI-GES mobile exam application to ensure exam integrity by restricting students' ability to leave the exam app during testing. This feature works on both Android and iOS platforms.
+Kiosk Mode has been implemented for the C-COS mobile exam application to ensure exam integrity by restricting students' ability to leave the exam app during testing. This feature works on both Android and iOS platforms.
 
 ## Features
 

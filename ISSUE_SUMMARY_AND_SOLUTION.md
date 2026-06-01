@@ -5,7 +5,7 @@
 **Mobile App Error:** "Not enough questions in section 'Section 1'. Need 1, have 0"
 
 **Symptoms:**
-1. ✅ Mobile app connects to production server at `https://api.uiges.shop`
+1. ✅ Mobile app connects to production server at `https://api.ccos.shop`
 2. ✅ Candidates can log in successfully
 3. ❌ When trying to start exam, error appears: "Not enough questions in section 'Section 1'. Need 1, have 0"
 4. ⚠️ Connection warning appears (though login still works)
@@ -44,7 +44,7 @@ The exam's `section_distribution` field is configured with `{"Section 1": 1}` (o
 
 ```bash
 # 1. SSH into your production server
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 
 # 2. Connect to database
 psql -U your_db_user -d ui_ges
@@ -88,14 +88,14 @@ pg_dump -U postgres -d gesDB -t exams --data-only --column-inserts > exams_expor
 **Step 3: Transfer to production**
 ```bash
 # Using SCP (or WinSCP on Windows)
-scp questions_export.sql your-username@api.uiges.shop:/tmp/
-scp exams_export.sql your-username@api.uiges.shop:/tmp/
+scp questions_export.sql your-username@api.ccos.shop:/tmp/
+scp exams_export.sql your-username@api.ccos.shop:/tmp/
 ```
 
 **Step 4: Import to production**
 ```bash
 # SSH into production
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 
 # Backup existing data first
 pg_dump -U your_db_user ui_ges > /tmp/backup_before_import.sql
@@ -132,10 +132,10 @@ I've created several tools to help you diagnose and fix this issue:
 **Usage:**
 ```bash
 # Transfer to production server
-scp diagnose-production-issue.sql your-username@api.uiges.shop:/tmp/
+scp diagnose-production-issue.sql your-username@api.ccos.shop:/tmp/
 
 # Run on production database
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 psql -U your_db_user -d ui_ges -f /tmp/diagnose-production-issue.sql
 ```
 
@@ -148,10 +148,10 @@ psql -U your_db_user -d ui_ges -f /tmp/diagnose-production-issue.sql
 **Usage:**
 ```bash
 # Transfer to production
-scp fix-production-exams.sql your-username@api.uiges.shop:/tmp/
+scp fix-production-exams.sql your-username@api.ccos.shop:/tmp/
 
 # Run on production database
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 psql -U your_db_user -d ui_ges
 # Then manually run the appropriate fix from the script
 ```
@@ -173,7 +173,7 @@ psql -U your_db_user -d ui_ges
 
 2. **Apply quick fix (disable section distribution):**
    ```bash
-   ssh your-username@api.uiges.shop
+   ssh your-username@api.ccos.shop
    psql -U your_db_user -d ui_ges
    UPDATE exams SET enable_section_distribution = false, section_distribution = NULL;
    \q
@@ -229,10 +229,10 @@ After applying the fix:
 pm2 logs backend
 
 # If using Docker
-docker logs ui-ges-backend
+docker logs c-cos-backend
 
 # If using systemd
-journalctl -u ui-ges-backend -f
+journalctl -u c-cos-backend -f
 ```
 
 ### Check Database Connection
@@ -243,7 +243,7 @@ psql -U your_db_user -d ui_ges -c "SELECT COUNT(*) FROM questions;"
 
 ### Verify Backend is Running
 ```bash
-curl https://api.uiges.shop/health
+curl https://api.ccos.shop/health
 # Should return: {"status":"ok","timestamp":"..."}
 ```
 
@@ -267,7 +267,7 @@ curl https://api.uiges.shop/health
 
 ```bash
 # Quick Fix (disable section distribution)
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 psql -U your_db_user -d ui_ges -c "UPDATE exams SET enable_section_distribution = false;"
 
 # Check if it worked

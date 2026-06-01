@@ -137,7 +137,7 @@ function LayoutContent() {
               </div>
               {isOpen && (
                 <div>
-                  <h2 className="font-bold text-xl text-slate-900 whitespace-nowrap">UI-GES</h2>
+                  <h2 className="font-bold text-xl text-slate-900 whitespace-nowrap">C-COS</h2>
                   <p className="text-xs text-slate-500 uppercase tracking-wider whitespace-nowrap">Testing System</p>
                 </div>
               )}
@@ -260,7 +260,7 @@ function LayoutContent() {
               <span className="text-white font-bold text-sm">UI</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold text-slate-900 leading-tight">UI-GES</h1>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">C-COS</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-wider leading-tight">Testing System</p>
             </div>
           </div>

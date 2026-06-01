@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'UI-GES'
+rootProject.name = 'C-COS'
 
 expoAutolinking.useExpoVersionCatalog()
 

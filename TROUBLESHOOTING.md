@@ -1,4 +1,4 @@
-# UI-GES Troubleshooting Guide
+# C-COS Troubleshooting Guide
 
 ## ✅ What I've Fixed
 

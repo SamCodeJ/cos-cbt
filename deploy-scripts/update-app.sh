@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# UI-GES Update Script
+# C-COS Update Script
 # Use this to update your application after making changes
 
 set -e
 
 echo "======================================"
-echo "UI-GES Application Update"
+echo "C-COS Application Update"
 echo "======================================"
 echo ""
 
 # Check if we're in the right directory
 if [ ! -d "backend" ] || [ ! -f "package.json" ]; then
     echo "Error: Not in the correct directory!"
-    echo "Please run this script from /home/uiges/UI-GES-1"
+    echo "Please run this script from /home/ccos/C-COS-1"
     exit 1
 fi
 
@@ -67,7 +67,7 @@ if [ "$UPDATE_BACKEND" = true ]; then
     fi
     
     echo "Restarting backend..."
-    pm2 restart uiges-backend
+    pm2 restart ccos-backend
     
     echo "Backend updated successfully!"
     pm2 status
@@ -105,7 +105,7 @@ echo ""
 
 if [ "$UPDATE_BACKEND" = true ]; then
     echo "Backend logs:"
-    pm2 logs uiges-backend --lines 20 --nostream
+    pm2 logs ccos-backend --lines 20 --nostream
 fi
 
 echo ""

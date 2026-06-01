@@ -6,7 +6,7 @@ A **complete web-based candidate portal** for taking exams on desktop PCs in phy
 
 ### Location
 ```
-UI-GES-1/desktop/
+C-COS-1/desktop/
 ```
 
 ## 📋 Complete Feature List

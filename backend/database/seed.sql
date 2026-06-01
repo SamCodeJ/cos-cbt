@@ -1,4 +1,4 @@
--- UI-GES Seed Data
+-- C-COS Seed Data
 -- Creates demo users, exams, and questions for testing
 
 -- Insert demo users (passwords are hashed version of 'password')

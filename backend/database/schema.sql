@@ -1,4 +1,4 @@
--- UI-GES Database Schema
+-- C-COS Database Schema
 -- PostgreSQL
 
 -- Drop existing tables if they exist

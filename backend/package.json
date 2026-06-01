@@ -1,7 +1,7 @@
 {
-  "name": "ui-ges-backend",
+  "name": "c-cos-backend",
   "version": "1.0.0",
-  "description": "UI-GES Computer-Based Testing System Backend API",
+  "description": "C-COS Computer-Based Testing System Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

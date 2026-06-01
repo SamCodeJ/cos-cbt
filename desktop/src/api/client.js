@@ -3,7 +3,7 @@ import axios from 'axios';
 // Get API base URL from environment variable or default to localhost
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
-console.log('🖥️  UI-GES Desktop Candidate Portal');
+console.log('🖥️  C-COS Desktop Candidate Portal');
 console.log('🔗 API Base URL:', API_BASE_URL);
 
 const apiClient = axios.create({

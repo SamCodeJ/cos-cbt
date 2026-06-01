@@ -1,8 +1,8 @@
-# 📚 UI-GES BUSINESS DOCUMENTATION INDEX
+# 📚 C-COS BUSINESS DOCUMENTATION INDEX
 
 ## Quick Navigation Guide
 
-This folder contains comprehensive business documentation for the UI-GES Computer-Based Testing System. Use this index to find the right document for your needs.
+This folder contains comprehensive business documentation for the C-COS Computer-Based Testing System. Use this index to find the right document for your needs.
 
 ---
 
@@ -59,7 +59,7 @@ This folder contains comprehensive business documentation for the UI-GES Compute
 **High-level 20-page overview**
 
 **Contents:**
-- ✅ What is UI-GES (elevator pitch)
+- ✅ What is C-COS (elevator pitch)
 - ✅ Key value propositions (5 main benefits)
 - ✅ Quick comparison table
 - ✅ Pricing at a glance
@@ -253,8 +253,8 @@ This folder contains comprehensive business documentation for the UI-GES Compute
 
 ### By Question/Need:
 
-**"What is UI-GES?"**
-→ **EXECUTIVE_SUMMARY.md** (Section: What is UI-GES)
+**"What is C-COS?"**
+→ **EXECUTIVE_SUMMARY.md** (Section: What is C-COS)
 
 **"How much does it cost?"**
 → **PRICING_SHEET.md** (All pricing sections)
@@ -294,7 +294,7 @@ Subject: Transform Your Exam Process - Save $100K+ Annually
 Hi [Name],
 
 I noticed [School Name] conducts [X] exams per year for [Y] students. 
-I wanted to share how UI-GES has helped similar institutions:
+I wanted to share how C-COS has helped similar institutions:
 
 ✅ Save 90% on printing costs
 ✅ Grade 1,000 exams in 5 minutes (not 5 days)
@@ -309,7 +309,7 @@ Attachment: ONE_PAGE_OVERVIEW.md (as PDF)
 
 ### Template 2: Post-Demo Follow-Up
 ```
-Subject: UI-GES Demo Follow-Up - Executive Summary & Pricing
+Subject: C-COS Demo Follow-Up - Executive Summary & Pricing
 
 Hi [Name],
 
@@ -334,11 +334,11 @@ Attachments:
 
 ### Template 3: Proposal Email
 ```
-Subject: UI-GES Proposal for [School Name]
+Subject: C-COS Proposal for [School Name]
 
 Hi [Name],
 
-Attached is our complete proposal for implementing UI-GES at 
+Attached is our complete proposal for implementing C-COS at 
 [School Name]:
 
 1. Full Technical Documentation
@@ -407,7 +407,7 @@ Attachments:
 **Email Attachments:**
 - Convert to PDF (preserve formatting)
 - Keep file size <10 MB (compress images if needed)
-- Name clearly: "UI-GES_ExecutiveSummary_Jan2026.pdf"
+- Name clearly: "C-COS_ExecutiveSummary_Jan2026.pdf"
 
 **Website Download:**
 - Offer as PDF download
@@ -562,7 +562,7 @@ Before using these documents:
 
 ---
 
-**These documents are ready to help you sell UI-GES successfully!**
+**These documents are ready to help you sell C-COS successfully!**
 
 **Good luck with your business development!**
 
@@ -570,4 +570,4 @@ Before using these documents:
 
 *Created: January 17, 2026*  
 *Version: 1.0*  
-*Package: UI-GES Business Documentation*
+*Package: C-COS Business Documentation*

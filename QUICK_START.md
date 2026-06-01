@@ -23,7 +23,7 @@ I've configured your lightbulb logo throughout the application. Here's what's be
 **Save your lightbulb logo image to these locations:**
 
 ```
-UI-GES/
+C-COS/
 ├── public/
 │   └── images/
 │       ├── logo.png       ← 512x512px (main logo)

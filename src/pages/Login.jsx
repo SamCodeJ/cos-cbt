@@ -56,7 +56,7 @@ export default function Login() {
         <div className="text-center mb-8">
           <img 
             src="/images/logo.svg" 
-            alt="UI-GES Logo" 
+            alt="C-COS Logo" 
             className="w-20 h-20 object-contain mx-auto mb-4 drop-shadow-xl"
             onError={(e) => {
               // Try PNG fallback, then gradient box
@@ -72,7 +72,7 @@ export default function Login() {
           <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl items-center justify-center mx-auto mb-4 shadow-lg hidden">
             <span className="text-white font-bold text-2xl">UI</span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">UI-GES</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">C-COS</h1>
           <p className="text-slate-600">Computer-Based Testing System</p>
         </div>
 

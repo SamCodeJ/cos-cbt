@@ -1,4 +1,4 @@
-# 🧪 UI-GES Complete Testing Guide
+# 🧪 C-COS Complete Testing Guide
 
 ## 📋 Pre-Testing Checklist
 
@@ -117,7 +117,7 @@ npm run db:seed
 npm run dev
 
 # You should see:
-# 🚀 UI-GES Backend Server running on port 3000
+# 🚀 C-COS Backend Server running on port 3000
 # 📊 Environment: development
 # 🔗 API Base URL: http://localhost:3000/api
 # ✅ Database connection successful
@@ -153,7 +153,7 @@ Open a **NEW terminal** (keep backend running):
 cd ..
 
 # Or if you're somewhere else:
-cd C:\Users\Donation\Documents\ReactProjects\UI-GES
+cd C:\Users\Donation\Documents\ReactProjects\C-COS
 
 # Install dependencies
 npm install
@@ -189,7 +189,7 @@ npm run dev
 
 Open your browser and go to: **http://localhost:5173**
 
-You should see the UI-GES login page! 🎉
+You should see the C-COS login page! 🎉
 
 ---
 

@@ -4,7 +4,7 @@
 
 **Error Message:** "Not enough questions in section 'Section 1'. Need 1, have 0"
 
-**What's happening:** Your mobile app successfully connects to the production server at `https://api.uiges.shop` and candidates can log in, but when trying to start an exam, the backend can't find questions matching the configured section distribution.
+**What's happening:** Your mobile app successfully connects to the production server at `https://api.ccos.shop` and candidates can log in, but when trying to start an exam, the backend can't find questions matching the configured section distribution.
 
 ## Root Cause
 
@@ -46,13 +46,13 @@ If your local database has the questions but production doesn't:
 
 2. **Transfer to production server:**
    ```bash
-   scp questions_backup.sql your-username@api.uiges.shop:/tmp/
+   scp questions_backup.sql your-username@api.ccos.shop:/tmp/
    ```
 
 3. **Import to PRODUCTION database:**
    ```bash
    # SSH into production server
-   ssh your-username@api.uiges.shop
+   ssh your-username@api.ccos.shop
    
    # Import questions
    psql -U your_db_user -d ui_ges < /tmp/questions_backup.sql
@@ -64,7 +64,7 @@ If your local database has the questions but production doesn't:
 
 ```bash
 # SSH into your VPS
-ssh your-username@api.uiges.shop
+ssh your-username@api.ccos.shop
 
 # Connect to PostgreSQL
 psql -U your_db_user -d ui_ges
@@ -77,7 +77,7 @@ I've created a comprehensive diagnostic script: `diagnose-production-issue.sql`
 **On your local machine:**
 ```bash
 # Transfer the diagnostic script to production
-scp diagnose-production-issue.sql your-username@api.uiges.shop:/tmp/
+scp diagnose-production-issue.sql your-username@api.ccos.shop:/tmp/
 ```
 
 **On production server:**
@@ -98,7 +98,7 @@ Based on diagnostic results, use the appropriate fix from `fix-production-exams.
 
 ```bash
 # Transfer fix script
-scp fix-production-exams.sql your-username@api.uiges.shop:/tmp/
+scp fix-production-exams.sql your-username@api.ccos.shop:/tmp/
 
 # Review and apply fixes
 psql -U your_db_user -d ui_ges -f /tmp/fix-production-exams.sql
@@ -184,7 +184,7 @@ If the issue persists:
    ```bash
    pm2 logs backend
    # or
-   docker logs ui-ges-backend
+   docker logs c-cos-backend
    ```
 
 2. Look for detailed error messages like:
@@ -194,7 +194,7 @@ If the issue persists:
 
 3. Verify your production backend is actually running:
    ```bash
-   curl https://api.uiges.shop/health
+   curl https://api.ccos.shop/health
    # Should return: {"status":"ok","timestamp":"..."}
    ```
 

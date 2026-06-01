@@ -1,4 +1,4 @@
-# UI-GES PRICING SHEET
+# C-COS PRICING SHEET
 ## Quick Reference - 2026
 
 ---

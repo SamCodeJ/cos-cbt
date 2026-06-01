@@ -1,6 +1,6 @@
 # 🚀 Deployment Scripts
 
-**Automated scripts to deploy UI-GES to your VPS**
+**Automated scripts to deploy C-COS to your VPS**
 
 ---
 
@@ -33,7 +33,7 @@ These scripts are designed for:
 
 ```powershell
 # Navigate to project directory
-cd C:\Users\Donation\Documents\ReactProjects\UI-GES-1
+cd C:\Users\Donation\Documents\ReactProjects\C-COS-1
 
 # Upload scripts
 scp -r deploy-scripts root@YOUR_VPS_IP:/root/
@@ -42,7 +42,7 @@ scp -r deploy-scripts root@YOUR_VPS_IP:/root/
 **From Linux/Mac:**
 
 ```bash
-cd /path/to/UI-GES-1
+cd /path/to/C-COS-1
 scp -r deploy-scripts root@YOUR_VPS_IP:/root/
 ```
 
@@ -83,10 +83,10 @@ chmod +x vps-setup.sh
 
 ```bash
 # Switch to application user
-su - uiges
+su - ccos
 
 # Navigate to project
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 
 # Make script executable
 chmod +x deploy-scripts/deploy-backend.sh
@@ -112,8 +112,8 @@ chmod +x deploy-scripts/deploy-backend.sh
 ### 4. Deploy Web Portal
 
 ```bash
-# Still as uiges user
-cd /home/uiges/UI-GES-1
+# Still as ccos user
+cd /home/ccos/C-COS-1
 
 # Make script executable
 chmod +x deploy-scripts/deploy-web.sh
@@ -168,7 +168,7 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com -d api.yourdomain.c
 
 ```bash
 # Check system status
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 chmod +x deploy-scripts/health-check.sh
 ./deploy-scripts/health-check.sh
 ```
@@ -189,7 +189,7 @@ chmod +x deploy-scripts/health-check.sh
 
 ```bash
 # Pull latest changes (if using git)
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 git pull
 
 # Run update script
@@ -245,7 +245,7 @@ chmod +x deploy-scripts/update-app.sh
 - ✅ Start with PM2 (2 instances)
 - ✅ Configure auto-start on boot
 
-**Run as:** uiges user
+**Run as:** ccos user
 
 **Idempotent:** Yes (safe to run multiple times)
 
@@ -264,7 +264,7 @@ chmod +x deploy-scripts/update-app.sh
 - ✅ Add security headers
 - ✅ Cache static assets
 
-**Run as:** uiges user
+**Run as:** ccos user
 
 **Idempotent:** Yes
 
@@ -282,7 +282,7 @@ chmod +x deploy-scripts/update-app.sh
 - ✅ Zero-downtime updates for frontend
 - ✅ Show recent logs
 
-**Run as:** uiges user
+**Run as:** ccos user
 
 **Idempotent:** Yes
 
@@ -322,7 +322,7 @@ chmod +x script-name.sh
 ```bash
 # Check you're in the right directory
 pwd
-# Should show: /home/uiges/UI-GES-1 or /root/deploy-scripts
+# Should show: /home/ccos/C-COS-1 or /root/deploy-scripts
 
 # List scripts
 ls -la deploy-scripts/
@@ -335,7 +335,7 @@ ls -la deploy-scripts/
 sudo systemctl status postgresql
 
 # Test connection manually
-psql -U uiges_user -d gesDB -h localhost
+psql -U ccos_user -d gesDB -h localhost
 ```
 
 ### PM2 Command Not Found
@@ -382,8 +382,8 @@ nano deploy-scripts/deploy-web.sh
 
 ```bash
 # Instead of starting with script, manually start:
-pm2 delete uiges-backend
-pm2 start backend/server.js -i 4 --name "uiges-backend"
+pm2 delete ccos-backend
+pm2 start backend/server.js -i 4 --name "ccos-backend"
 pm2 save
 ```
 
@@ -414,10 +414,10 @@ If you want a different database name:
 crontab -e
 
 # Add health check every hour
-0 * * * * /home/uiges/UI-GES-1/deploy-scripts/health-check.sh >> /home/uiges/logs/health.log 2>&1
+0 * * * * /home/ccos/C-COS-1/deploy-scripts/health-check.sh >> /home/ccos/logs/health.log 2>&1
 
 # Daily backup at 2 AM (already in vps-setup.sh)
-0 2 * * * /home/uiges/backups/backup.sh >> /home/uiges/backups/backup.log 2>&1
+0 2 * * * /home/ccos/backups/backup.sh >> /home/ccos/backups/backup.log 2>&1
 
 # Weekly SSL certificate renewal check
 0 0 * * 0 certbot renew --quiet && systemctl reload nginx
@@ -450,19 +450,19 @@ pm2 set pm2-logrotate:compress true
 ## Files Created by Scripts
 
 ### By vps-setup.sh:
-- `/home/uiges/backups/backup.sh` - Database backup script
-- `/home/uiges/backups/*.sql.gz` - Database backups
-- `/home/uiges/logs/` - Log directory
+- `/home/ccos/backups/backup.sh` - Database backup script
+- `/home/ccos/backups/*.sql.gz` - Database backups
+- `/home/ccos/logs/` - Log directory
 
 ### By deploy-backend.sh:
-- `/home/uiges/UI-GES-1/backend/.env` - Backend environment config
+- `/home/ccos/C-COS-1/backend/.env` - Backend environment config
 - `~/.pm2/` - PM2 configuration and logs
 
 ### By deploy-web.sh:
-- `/home/uiges/UI-GES-1/.env.production` - Frontend environment
-- `/home/uiges/UI-GES-1/dist/` - Built frontend files
-- `/etc/nginx/sites-available/uiges-web` - Nginx config
-- `/etc/nginx/sites-enabled/uiges-web` - Nginx enabled config
+- `/home/ccos/C-COS-1/.env.production` - Frontend environment
+- `/home/ccos/C-COS-1/dist/` - Built frontend files
+- `/etc/nginx/sites-available/ccos-web` - Nginx config
+- `/etc/nginx/sites-enabled/ccos-web` - Nginx enabled config
 
 ---
 
@@ -472,7 +472,7 @@ pm2 set pm2-logrotate:compress true
 2. **Quick start guide**: `QUICK_START_VPS_DEPLOYMENT.md`
 3. **DNS configuration**: `DNS_CONFIGURATION_GUIDE.md`
 4. **Run health check**: `./health-check.sh`
-5. **Check logs**: `pm2 logs uiges-backend`
+5. **Check logs**: `pm2 logs ccos-backend`
 
 ---
 

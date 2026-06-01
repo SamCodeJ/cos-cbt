@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "UI-GES",
-    "slug": "ui-ges-mobile",
+    "name": "C-COS",
+    "slug": "c-cos-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,14 +13,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.uiges.mobile"
+      "bundleIdentifier": "com.ccos.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.uiges.mobile",
+      "package": "com.ccos.mobile",
       "permissions": [
         "SYSTEM_ALERT_WINDOW",
         "DISABLE_KEYGUARD",

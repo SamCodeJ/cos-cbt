@@ -2,7 +2,7 @@
 
 ## ✅ ALL CHANGES APPLIED
 
-Your UI-GES system has been successfully optimized to support **1000 concurrent candidates**!
+Your C-COS system has been successfully optimized to support **1000 concurrent candidates**!
 
 ---
 

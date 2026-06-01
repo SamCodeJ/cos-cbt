@@ -2,7 +2,7 @@
 
 ## Overview
 
-The UI-GES system now supports questions with multiple correct answers! Teachers can create questions where candidates must select all correct options using checkboxes instead of radio buttons.
+The C-COS system now supports questions with multiple correct answers! Teachers can create questions where candidates must select all correct options using checkboxes instead of radio buttons.
 
 ## What's New
 
@@ -298,5 +298,5 @@ For issues or questions:
 
 **Version:** 1.0.0  
 **Date:** December 2024  
-**Compatibility:** UI-GES v2.0+
+**Compatibility:** C-COS v2.0+
 

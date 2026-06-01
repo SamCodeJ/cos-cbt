@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# UI-GES Health Check Script
+# C-COS Health Check Script
 # Run this to check the status of all services
 
 echo "======================================"
-echo "UI-GES System Health Check"
+echo "C-COS System Health Check"
 echo "======================================"
 echo ""
 
@@ -48,7 +48,7 @@ echo "-------------------------"
 if command -v pm2 &> /dev/null; then
     pm2 status
     echo ""
-    if pm2 status | grep -q "uiges-backend.*online"; then
+    if pm2 status | grep -q "ccos-backend.*online"; then
         echo -e "${GREEN}✓${NC} Backend is running in PM2"
     else
         echo -e "${RED}✗${NC} Backend is NOT running in PM2"
@@ -83,18 +83,18 @@ echo ""
 echo "Checking Database Connection..."
 echo "--------------------------------"
 if command -v psql &> /dev/null; then
-    if PGPASSWORD='' psql -U uiges_user -d gesDB -h localhost -c "SELECT 1;" &> /dev/null; then
+    if PGPASSWORD='' psql -U ccos_user -d gesDB -h localhost -c "SELECT 1;" &> /dev/null; then
         echo -e "${GREEN}✓${NC} Database connection successful"
         
         # Get database stats
-        DB_SIZE=$(PGPASSWORD='' psql -U uiges_user -d gesDB -h localhost -t -c "SELECT pg_size_pretty(pg_database_size('gesDB'));" 2>/dev/null | xargs)
+        DB_SIZE=$(PGPASSWORD='' psql -U ccos_user -d gesDB -h localhost -t -c "SELECT pg_size_pretty(pg_database_size('gesDB'));" 2>/dev/null | xargs)
         if [ -n "$DB_SIZE" ]; then
             echo "  Database size: $DB_SIZE"
         fi
         
         # Get table counts
-        EXAMS=$(PGPASSWORD='' psql -U uiges_user -d gesDB -h localhost -t -c "SELECT COUNT(*) FROM exams;" 2>/dev/null | xargs)
-        USERS=$(PGPASSWORD='' psql -U uiges_user -d gesDB -h localhost -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | xargs)
+        EXAMS=$(PGPASSWORD='' psql -U ccos_user -d gesDB -h localhost -t -c "SELECT COUNT(*) FROM exams;" 2>/dev/null | xargs)
+        USERS=$(PGPASSWORD='' psql -U ccos_user -d gesDB -h localhost -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | xargs)
         echo "  Exams: $EXAMS"
         echo "  Users: $USERS"
     else
@@ -127,7 +127,7 @@ echo ""
 echo "Recent Backend Logs..."
 echo "----------------------"
 if command -v pm2 &> /dev/null; then
-    pm2 logs uiges-backend --lines 10 --nostream 2>/dev/null || echo "No logs available"
+    pm2 logs ccos-backend --lines 10 --nostream 2>/dev/null || echo "No logs available"
 else
     echo "PM2 not available"
 fi

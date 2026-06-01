@@ -1,4 +1,4 @@
-# 🎉 Complete UI-GES Backend Setup Guide
+# 🎉 Complete C-COS Backend Setup Guide
 
 ## ✅ What We Built
 
@@ -117,7 +117,7 @@ npm run db:seed
 npm run dev
 
 # You should see:
-# 🚀 UI-GES Backend Server running on port 3000
+# 🚀 C-COS Backend Server running on port 3000
 # ✅ Database connection successful
 ```
 

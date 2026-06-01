@@ -1,6 +1,6 @@
-# 🚀 UI-GES VPS Deployment Guide
+# 🚀 C-COS VPS Deployment Guide
 
-**Complete guide to deploying UI-GES to your VPS with custom domain**
+**Complete guide to deploying C-COS to your VPS with custom domain**
 
 ---
 
@@ -69,11 +69,11 @@ sudo apt install -y curl wget git vim ufw build-essential
 
 ```bash
 # Create a dedicated user for the application
-sudo adduser uiges
-sudo usermod -aG sudo uiges
+sudo adduser ccos
+sudo usermod -aG sudo ccos
 
 # Switch to the new user
-su - uiges
+su - ccos
 ```
 
 ### Step 4: Setup Firewall
@@ -128,16 +128,16 @@ sudo -u postgres psql
 
 # In PostgreSQL prompt, run:
 CREATE DATABASE gesDB;
-CREATE USER uiges_user WITH ENCRYPTED PASSWORD 'STRONG_PASSWORD_HERE';
-GRANT ALL PRIVILEGES ON DATABASE gesDB TO uiges_user;
+CREATE USER ccos_user WITH ENCRYPTED PASSWORD 'STRONG_PASSWORD_HERE';
+GRANT ALL PRIVILEGES ON DATABASE gesDB TO ccos_user;
 
 # Grant additional privileges (PostgreSQL 15+)
 \c gesDB
-GRANT ALL ON SCHEMA public TO uiges_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO uiges_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO uiges_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO uiges_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO uiges_user;
+GRANT ALL ON SCHEMA public TO ccos_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ccos_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ccos_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ccos_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ccos_user;
 
 # Exit
 \q
@@ -184,9 +184,9 @@ sudo apt install -y certbot python3-certbot-nginx
 
 ```bash
 # On your VPS
-cd /home/uiges
-git clone https://github.com/YOUR_USERNAME/UI-GES-1.git
-cd UI-GES-1
+cd /home/ccos
+git clone https://github.com/YOUR_USERNAME/C-COS-1.git
+cd C-COS-1
 ```
 
 **Option B: Using SCP (Manual Upload)**
@@ -194,17 +194,17 @@ cd UI-GES-1
 ```bash
 # From your local machine (in your project directory)
 # Replace YOUR_VPS_IP with actual IP
-scp -r . uiges@YOUR_VPS_IP:/home/uiges/UI-GES-1
+scp -r . ccos@YOUR_VPS_IP:/home/ccos/C-COS-1
 ```
 
 **Option C: Using FTP/SFTP**
 - Use FileZilla or WinSCP
-- Upload entire project to `/home/uiges/UI-GES-1`
+- Upload entire project to `/home/ccos/C-COS-1`
 
 ### Step 2: Setup Backend Environment
 
 ```bash
-cd /home/uiges/UI-GES-1/backend
+cd /home/ccos/C-COS-1/backend
 
 # Install dependencies
 npm install --production
@@ -224,7 +224,7 @@ NODE_ENV=production
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=gesDB
-DB_USER=uiges_user
+DB_USER=ccos_user
 DB_PASSWORD=STRONG_PASSWORD_HERE
 
 # JWT Configuration (CHANGE THIS!)
@@ -269,7 +269,7 @@ curl http://localhost:3001/health
 
 ```bash
 # Start backend with PM2
-pm2 start server.js --name "uiges-backend"
+pm2 start server.js --name "ccos-backend"
 
 # Configure PM2 to start on boot
 pm2 startup
@@ -279,7 +279,7 @@ pm2 save
 
 # Check status
 pm2 status
-pm2 logs uiges-backend
+pm2 logs ccos-backend
 ```
 
 ---
@@ -289,7 +289,7 @@ pm2 logs uiges-backend
 ### Step 1: Configure API URL
 
 ```bash
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 
 # Create production environment file
 nano .env.production
@@ -320,7 +320,7 @@ ls -la dist/
 
 ```bash
 # Create Nginx configuration
-sudo nano /etc/nginx/sites-available/uiges-web
+sudo nano /etc/nginx/sites-available/ccos-web
 ```
 
 Add this configuration:
@@ -331,7 +331,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
     
     # Web Portal (React App)
-    root /home/uiges/UI-GES-1/dist;
+    root /home/ccos/C-COS-1/dist;
     index index.html;
     
     location / {
@@ -372,7 +372,7 @@ server {
 
 ```bash
 # Enable the configuration
-sudo ln -s /etc/nginx/sites-available/uiges-web /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/ccos-web /etc/nginx/sites-enabled/
 
 # Remove default configuration
 sudo rm /etc/nginx/sites-enabled/default
@@ -436,7 +436,7 @@ Visit in your browser:
 ### Step 5: Update Backend CORS
 
 ```bash
-cd /home/uiges/UI-GES-1/backend
+cd /home/ccos/C-COS-1/backend
 nano .env
 ```
 
@@ -449,7 +449,7 @@ CORS_ORIGIN=https://yourdomain.com
 Restart backend:
 
 ```bash
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 ```
 
 ---
@@ -474,7 +474,7 @@ const API_BASE_URL = 'https://api.yourdomain.com/api';
 
 ```bash
 # On VPS
-cd /home/uiges/UI-GES-1/backend
+cd /home/ccos/C-COS-1/backend
 nano server.js
 ```
 
@@ -513,7 +513,7 @@ app.use(cors({
 Restart backend:
 
 ```bash
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 ```
 
 ### Step 3: Build Mobile App
@@ -611,20 +611,20 @@ sudo systemctl restart postgresql
 
 ```bash
 # Create backup script
-mkdir -p /home/uiges/backups
-nano /home/uiges/backups/backup.sh
+mkdir -p /home/ccos/backups
+nano /home/ccos/backups/backup.sh
 ```
 
 Add:
 
 ```bash
 #!/bin/bash
-BACKUP_DIR="/home/uiges/backups"
+BACKUP_DIR="/home/ccos/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/gesDB_$DATE.sql"
 
 # Backup database
-PGPASSWORD="YOUR_DB_PASSWORD" pg_dump -U uiges_user -h localhost gesDB > $BACKUP_FILE
+PGPASSWORD="YOUR_DB_PASSWORD" pg_dump -U ccos_user -h localhost gesDB > $BACKUP_FILE
 
 # Compress backup
 gzip $BACKUP_FILE
@@ -638,7 +638,7 @@ echo "Backup completed: $BACKUP_FILE.gz"
 Make executable and setup cron:
 
 ```bash
-chmod +x /home/uiges/backups/backup.sh
+chmod +x /home/ccos/backups/backup.sh
 
 # Setup daily backup at 2 AM
 crontab -e
@@ -647,7 +647,7 @@ crontab -e
 Add:
 
 ```
-0 2 * * * /home/uiges/backups/backup.sh >> /home/uiges/backups/backup.log 2>&1
+0 2 * * * /home/ccos/backups/backup.sh >> /home/ccos/backups/backup.log 2>&1
 ```
 
 ### Step 3: Setup Monitoring
@@ -676,10 +676,10 @@ MAX_CONNECTIONS=1000
 Update PM2 configuration:
 
 ```bash
-pm2 delete uiges-backend
+pm2 delete ccos-backend
 
 # Start with clustering (4 instances)
-pm2 start server.js -i 4 --name "uiges-backend"
+pm2 start server.js -i 4 --name "ccos-backend"
 
 pm2 save
 ```
@@ -712,7 +712,7 @@ free -h
 
 ```bash
 # Backend logs
-pm2 logs uiges-backend
+pm2 logs ccos-backend
 
 # Nginx access logs
 sudo tail -f /var/log/nginx/access.log
@@ -728,7 +728,7 @@ sudo tail -f /var/log/postgresql/postgresql-14-main.log
 
 ```bash
 # Restart backend
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 
 # Restart Nginx
 sudo systemctl restart nginx
@@ -740,7 +740,7 @@ sudo systemctl restart postgresql
 ### Update Application
 
 ```bash
-cd /home/uiges/UI-GES-1
+cd /home/ccos/C-COS-1
 
 # Pull latest changes
 git pull
@@ -748,7 +748,7 @@ git pull
 # Update backend
 cd backend
 npm install --production
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 
 # Update web portal
 cd ..
@@ -784,7 +784,7 @@ sudo systemctl start fail2ban
 
 ### 1. Test Web Portal
 - Visit `https://yourdomain.com`
-- Login with: `admin@uiges.com` / `password`
+- Login with: `admin@ccos.com` / `password`
 - Create a test exam
 - Add candidates and questions
 
@@ -793,12 +793,12 @@ sudo systemctl start fail2ban
 curl https://api.yourdomain.com/health
 curl -X POST https://api.yourdomain.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"teacher@uiges.com","password":"password"}'
+  -d '{"email":"teacher@ccos.com","password":"password"}'
 ```
 
 ### 3. Test Mobile App
 - Install on device
-- Login with: `candidate@uiges.com` / `password`
+- Login with: `candidate@ccos.com` / `password`
 - Take test exam
 
 ---
@@ -825,10 +825,10 @@ sudo tail -50 /var/log/nginx/error.log
 pm2 status
 
 # View backend logs
-pm2 logs uiges-backend --lines 50
+pm2 logs ccos-backend --lines 50
 
 # Restart backend
-pm2 restart uiges-backend
+pm2 restart ccos-backend
 ```
 
 ### Issue: Database connection error
@@ -838,7 +838,7 @@ pm2 restart uiges-backend
 sudo systemctl status postgresql
 
 # Test connection
-psql -U uiges_user -d gesDB -h localhost
+psql -U ccos_user -d gesDB -h localhost
 
 # Check credentials in backend/.env
 ```
@@ -869,7 +869,7 @@ sudo systemctl reload nginx
 
 ## 🎉 Success!
 
-Your UI-GES system is now live on:
+Your C-COS system is now live on:
 
 - **Web Portal**: `https://yourdomain.com`
 - **API**: `https://api.yourdomain.com`

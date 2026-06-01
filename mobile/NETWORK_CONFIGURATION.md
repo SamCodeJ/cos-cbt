@@ -18,7 +18,7 @@ const API_BASE_URL = 'http://10.25.38.125:3001/api';
 
 1. **Look at the backend terminal** - When the backend starts, it displays:
    ```
-   🚀 UI-GES Backend Server running on port 3001
+   🚀 C-COS Backend Server running on port 3001
    📱 Mobile Device URL: http://YOUR_IP_HERE:3001/api
    ```
 
@@ -53,7 +53,7 @@ const API_BASE_URL = 'http://10.25.38.125:3001/api';
    cd backend
    npm run dev
    ```
-   You should see: "🚀 UI-GES Backend Server running on port 3001"
+   You should see: "🚀 C-COS Backend Server running on port 3001"
 
 2. Verify your computer's current IP address matches `API_BASE_URL`
 
@@ -99,7 +99,7 @@ The mobile app now includes detailed logging to help diagnose issues:
 
 ### On App Startup
 ```
-📱 UI-GES Mobile App - API Configuration
+📱 C-COS Mobile App - API Configuration
 🔗 API Base URL: http://10.57.236.125:3000/api
 📍 Server IP: 10.57.236.125
 🔌 Server Port: 3000

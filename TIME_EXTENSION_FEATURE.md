@@ -306,7 +306,7 @@ If you encounter any issues:
 
 ---
 
-**Feature developed for UI-GES Examination System**
+**Feature developed for C-COS Examination System**
 Version: 1.0
 Date: January 2026
 

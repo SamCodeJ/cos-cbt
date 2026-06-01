@@ -1,4 +1,4 @@
-# UI-GES - Computer-Based Testing System
+# C-COS - Computer-Based Testing System
 
 A comprehensive Computer-Based Testing (CBT) system with a React web portal for administrators and teachers, and a React Native mobile app for candidates.
 
@@ -83,7 +83,7 @@ A comprehensive Computer-Based Testing (CBT) system with a React web portal for 
 ## 📁 Project Structure
 
 ```
-ui-ges/
+c-cos/
 ├── web/                          # Web portal
 │   ├── src/
 │   │   ├── api/                  # API client and endpoints

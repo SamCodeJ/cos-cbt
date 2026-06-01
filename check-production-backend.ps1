@@ -3,12 +3,12 @@
 # Run this to verify your production server is properly configured
 # ========================================
 
-Write-Host "🏥 UI-GES Production Backend Health Check" -ForegroundColor Cyan
+Write-Host "🏥 C-COS Production Backend Health Check" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Configuration
-$PRODUCTION_URL = "https://api.uiges.shop"
+$PRODUCTION_URL = "https://api.ccos.shop"
 $API_URL = "$PRODUCTION_URL/api"
 
 # Test 1: Backend Health Endpoint

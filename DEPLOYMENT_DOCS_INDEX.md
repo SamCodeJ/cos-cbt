@@ -1,6 +1,6 @@
 # 📚 VPS Deployment Documentation Index
 
-**Complete guide to deploying UI-GES to your VPS**
+**Complete guide to deploying C-COS to your VPS**
 
 ---
 
@@ -323,13 +323,13 @@ Your deployment is successful when:
 
 3. **Recent Errors**
    ```bash
-   pm2 logs uiges-backend --lines 50 --nostream
+   pm2 logs ccos-backend --lines 50 --nostream
    sudo tail -50 /var/log/nginx/error.log
    ```
 
 4. **Health Check Output**
    ```bash
-   cd /home/uiges/UI-GES-1
+   cd /home/ccos/C-COS-1
    ./deploy-scripts/health-check.sh
    ```
 
@@ -361,7 +361,7 @@ This documentation set includes:
 
 ## 🎉 Ready to Deploy!
 
-You now have everything you need to deploy UI-GES to your VPS:
+You now have everything you need to deploy C-COS to your VPS:
 
 1. **📚 Complete documentation** covering every step
 2. **🤖 Automated scripts** for one-command deployment

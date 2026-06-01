@@ -1,6 +1,6 @@
 # Database Migrations
 
-This directory contains SQL migration files for the UI-GES database.
+This directory contains SQL migration files for the C-COS database.
 
 ## Running Migrations
 

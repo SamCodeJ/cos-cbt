@@ -1,4 +1,4 @@
-# UI-GES Desktop Candidate Portal
+# C-COS Desktop Candidate Portal
 
 A web-based candidate interface for taking exams on desktop computers (PCs/Laptops) in physical halls or computer labs.
 
