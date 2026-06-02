@@ -310,6 +310,18 @@ export default function CreateExam() {
   });
   const [candidatePage, setCandidatePage] = useState(1);
   const [candidatesPerPage, setCandidatesPerPage] = useState(10);
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
+
+  // Filtered candidates based on search
+  const filteredCandidates = candidates.filter(candidate => {
+    if (!candidateSearchQuery) return true;
+    const query = candidateSearchQuery.toLowerCase();
+    return (
+      candidate.name?.toLowerCase().includes(query) ||
+      candidate.email?.toLowerCase().includes(query) ||
+      candidate.student_id?.toLowerCase().includes(query)
+    );
+  });
 
   const addCandidate = () => {
     if (!newCandidate.name || !newCandidate.email) {
@@ -394,6 +406,17 @@ export default function CreateExam() {
   const [selectedQuestions, setSelectedQuestions] = useState(new Set());
   const [questionPage, setQuestionPage] = useState(1);
   const [questionsPerPage, setQuestionsPerPage] = useState(10);
+  const [questionSearchQuery, setQuestionSearchQuery] = useState('');
+
+  // Filtered questions based on search
+  const filteredQuestions = questions.filter(question => {
+    if (!questionSearchQuery) return true;
+    const query = questionSearchQuery.toLowerCase();
+    return (
+      question.question_text?.toLowerCase().includes(query) ||
+      question.section_id?.toLowerCase().includes(query)
+    );
+  });
   
   // Section-based distribution settings
   const [enableSectionDistribution, setEnableSectionDistribution] = useState(false);
@@ -476,11 +499,11 @@ export default function CreateExam() {
   };
 
   // Paginated data
-  const paginatedCandidates = getPaginatedItems(candidates, candidatePage, candidatesPerPage);
-  const totalCandidatePages = getTotalPages(candidates, candidatesPerPage);
+  const paginatedCandidates = getPaginatedItems(filteredCandidates, candidatePage, candidatesPerPage);
+  const totalCandidatePages = getTotalPages(filteredCandidates, candidatesPerPage);
 
-  const paginatedQuestions = getPaginatedItems(questions, questionPage, questionsPerPage);
-  const totalQuestionPages = getTotalPages(questions, questionsPerPage);
+  const paginatedQuestions = getPaginatedItems(filteredQuestions, questionPage, questionsPerPage);
+  const totalQuestionPages = getTotalPages(filteredQuestions, questionsPerPage);
 
   // Handlers for items per page change
   const handleCandidatesPerPageChange = (newPerPage) => {
@@ -495,7 +518,7 @@ export default function CreateExam() {
 
   // Pagination component
   const Pagination = ({ currentPage, totalPages, onPageChange, itemName, itemsPerPage, onItemsPerPageChange }) => {
-    const totalItems = itemName === 'candidates' ? candidates.length : questions.length;
+    const totalItems = itemName === 'candidates' ? filteredCandidates.length : filteredQuestions.length;
     
     if (totalItems === 0) return null;
 
@@ -1062,6 +1085,22 @@ export default function CreateExam() {
                   </div>
 
                   {/* Candidates Table */}
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-semibold text-slate-900">Added Candidates ({candidates.length})</h4>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search candidates..."
+                        value={candidateSearchQuery}
+                        onChange={(e) => {
+                          setCandidateSearchQuery(e.target.value);
+                          setCandidatePage(1);
+                        }}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </div>
+                  
                   {candidates.length > 0 ? (
                     <div className="border border-slate-200 rounded-lg overflow-hidden">
                       <Table>
@@ -1304,6 +1343,22 @@ export default function CreateExam() {
                   </div>
 
                   {/* Questions List */}
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-semibold text-slate-900">Added Questions ({questions.length})</h4>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search questions..."
+                        value={questionSearchQuery}
+                        onChange={(e) => {
+                          setQuestionSearchQuery(e.target.value);
+                          setQuestionPage(1);
+                        }}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </div>
+                  
                   {questions.length > 0 ? (
                     <div className="space-y-3">
                       {/* Bulk Actions Bar */}
