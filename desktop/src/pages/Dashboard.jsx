@@ -66,7 +66,21 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
+              <img 
+                src="/images/logo.svg" 
+                alt="C-COS Logo" 
+                className="w-10 h-10 object-contain drop-shadow-md"
+                onError={(e) => {
+                  if (!e.target.dataset.fallback) {
+                    e.target.dataset.fallback = 'true';
+                    e.target.src = '/images/logo.png';
+                  } else {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }
+                }}
+              />
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg items-center justify-center hidden">
                 <span className="text-white font-bold text-lg">UI</span>
               </div>
               <div>

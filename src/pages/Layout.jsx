@@ -132,7 +132,21 @@ function LayoutContent() {
           {/* Sidebar Header - Only show on desktop or when mobile sidebar is open */}
           <SidebarHeader className={`border-b border-slate-200 transition-all duration-300 ${isOpen ? 'p-6' : 'p-3'}`}>
             <div className={`flex items-center ${isOpen ? 'gap-3' : 'justify-center'}`}>
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <img 
+                src="/images/logo.svg" 
+                alt="C-COS Logo" 
+                className="w-10 h-10 object-contain drop-shadow-md flex-shrink-0"
+                onError={(e) => {
+                  if (!e.target.dataset.fallback) {
+                    e.target.dataset.fallback = 'true';
+                    e.target.src = '/images/logo.png';
+                  } else {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }
+                }}
+              />
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg items-center justify-center flex-shrink-0 hidden">
                 <span className="text-white font-bold text-xl">UI</span>
               </div>
               {isOpen && (
@@ -256,7 +270,21 @@ function LayoutContent() {
         <header className="sticky top-0 z-[60] bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 md:hidden shadow-sm">
           <SidebarTrigger className="flex-shrink-0 hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200 -ml-2" />
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <img 
+              src="/images/logo.svg" 
+              alt="C-COS Logo" 
+              className="w-8 h-8 object-contain drop-shadow-sm flex-shrink-0"
+              onError={(e) => {
+                if (!e.target.dataset.fallback) {
+                  e.target.dataset.fallback = 'true';
+                  e.target.src = '/images/logo.png';
+                } else {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }
+              }}
+            />
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg items-center justify-center flex-shrink-0 hidden">
               <span className="text-white font-bold text-sm">UI</span>
             </div>
             <div className="flex-1 min-w-0">

@@ -2,12 +2,12 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ PRODUCTION - Online Backend
-// export const SERVER_URL = 'https://api.ccos.shop';
-// export const API_BASE_URL = `${SERVER_URL}/api`;
+export const SERVER_URL = 'https://api.segiu.shop';
+export const API_BASE_URL = `${SERVER_URL}/api`;
 
 // 🔧 DEVELOPMENT - Local Testing (uncomment for local dev)
-export const SERVER_URL = 'http://172.28.232.146:3001';
-export const API_BASE_URL = `${SERVER_URL}/api`;
+// export const SERVER_URL = 'http://172.28.232.146:3001';
+// export const API_BASE_URL = `${SERVER_URL}/api`;
 
 // Log API configuration on startup
 console.log('📱 C-COS Mobile App - API Configuration');

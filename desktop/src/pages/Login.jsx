@@ -56,7 +56,21 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <img 
+            src="/images/logo.svg" 
+            alt="C-COS Logo" 
+            className="w-20 h-20 object-contain mx-auto mb-4 drop-shadow-xl"
+            onError={(e) => {
+              if (!e.target.dataset.fallback) {
+                e.target.dataset.fallback = 'true';
+                e.target.src = '/images/logo.png';
+              } else {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }
+            }}
+          />
+          <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl items-center justify-center mx-auto mb-4 shadow-lg hidden">
             <span className="text-white font-bold text-3xl">UI</span>
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">C-COS</h1>

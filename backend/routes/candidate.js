@@ -142,27 +142,19 @@ router.get('/exams/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if candidate is assigned to this exam
-    const assignmentCheck = await db.query(
-      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
-      [id, req.user.id]
-    );
-
-    if (assignmentCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'You are not assigned to this exam' });
-    }
-
+    // Get exam details and verify assignment in one query
     const result = await db.query(`
       SELECT 
         e.*,
         u.name as teacher_name
       FROM exams e
       JOIN users u ON e.teacher_id = u.id
+      JOIN exam_candidates ec ON ec.exam_id = e.id AND ec.candidate_id = $2
       WHERE e.id = $1
-    `, [id]);
+    `, [id, req.user.id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Exam not found' });
+      return res.status(404).json({ error: 'Exam not found or you are not assigned to this exam' });
     }
 
     const exam = result.rows[0];
@@ -468,9 +460,19 @@ router.post('/exams/:id/start', async (req, res) => {
 
     const attemptId = attemptResult.rows[0].id;
 
-    // Assign questions to candidate with shuffled options
+    // Assign questions to candidate with shuffled options using bulk insert
     console.log(`📝 Assigning ${selectedQuestions.length} questions to candidate ${candidateId} for exam ${id}`);
     
+    const eqExamIds = [];
+    const eqCandidateIds = [];
+    const eqQuestionIds = [];
+    const eqQuestionOrders = [];
+    const eqCorrectAnswers = [];
+    const eqOptionAs = [];
+    const eqOptionBs = [];
+    const eqOptionCs = [];
+    const eqOptionDs = [];
+
     for (let i = 0; i < selectedQuestions.length; i++) {
       const question = selectedQuestions[i];
       
@@ -485,38 +487,38 @@ router.post('/exams/:id/start', async (req, res) => {
         throw new Error(`Question ${question.id} has no correct answer`);
       }
       
-      console.log(`💾 Storing Q${question.id} (Section: ${question.section_id || 'None'}) in exam_questions:`, {
-        question_order: i + 1,
-        shuffled_correct_answer: question.correct_answer,
-        shuffled_option_a: question.option_a?.substring(0, 20),
-        shuffled_option_b: question.option_b?.substring(0, 20),
-        shuffled_option_c: question.option_c?.substring(0, 20) || 'NULL',
-        shuffled_option_d: question.option_d?.substring(0, 20) || 'NULL'
-      });
-      
-      try {
+      eqExamIds.push(id);
+      eqCandidateIds.push(candidateId);
+      eqQuestionIds.push(question.id);
+      eqQuestionOrders.push(i + 1);
+      eqCorrectAnswers.push(question.correct_answer);
+      eqOptionAs.push(question.option_a);
+      eqOptionBs.push(question.option_b);
+      eqOptionCs.push(question.option_c || null);
+      eqOptionDs.push(question.option_d || null);
+    }
+    
+    try {
+      if (eqQuestionIds.length > 0) {
         await client.query(`
           INSERT INTO exam_questions (
             exam_id, candidate_id, question_id, question_order, 
             shuffled_correct_answer, shuffled_option_a, shuffled_option_b, 
             shuffled_option_c, shuffled_option_d
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          SELECT * FROM UNNEST(
+            $1::int[], $2::int[], $3::int[], $4::int[], 
+            $5::varchar[], $6::text[], $7::text[], 
+            $8::text[], $9::text[]
+          )
         `, [
-          id, 
-          candidateId, 
-          question.id, 
-          i + 1, 
-          question.correct_answer,
-          question.option_a,
-          question.option_b,
-          question.option_c || null,
-          question.option_d || null
+          eqExamIds, eqCandidateIds, eqQuestionIds, eqQuestionOrders,
+          eqCorrectAnswers, eqOptionAs, eqOptionBs, eqOptionCs, eqOptionDs
         ]);
-      } catch (insertError) {
-        console.error(`❌ Failed to insert question ${question.id} at order ${i + 1}:`, insertError);
-        throw new Error(`Failed to assign question ${question.id}: ${insertError.message}`);
       }
+    } catch (insertError) {
+      console.error(`❌ Failed to insert questions in bulk:`, insertError);
+      throw new Error(`Failed to assign questions: ${insertError.message}`);
     }
     
     console.log(`✅ Successfully assigned all ${selectedQuestions.length} questions`);
@@ -629,77 +631,32 @@ router.post('/exams/:id/save-answer', async (req, res) => {
     const { id } = req.params;
     const { question_id, answer } = req.body;
 
-    // Check if candidate is assigned to this exam
-    const assignmentCheck = await db.query(
-      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
-      [id, req.user.id]
-    );
-
-    if (assignmentCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'You are not assigned to this exam' });
-    }
-
-    // Get attempt ID
-    const attemptResult = await db.query(
-      'SELECT id FROM exam_attempts WHERE exam_id = $1 AND candidate_id = $2 AND status = \'in_progress\'',
-      [id, req.user.id]
-    );
-
-    if (attemptResult.rows.length === 0) {
-      return res.status(404).json({ error: 'No active exam attempt found' });
-    }
-
-    const attemptId = attemptResult.rows[0].id;
-
-    // Get correct answer (use shuffled version if available)
-    const questionResult = await db.query(`
+    // Combine assignment check, attempt fetch, and question fetch into a single efficient query
+    const result = await db.query(`
       SELECT 
+        ea.id as attempt_id,
         q.correct_answer as original_correct_answer,
         q.is_multi_answer,
         eq.shuffled_correct_answer,
-        COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer,
-        eq.shuffled_option_a,
-        eq.shuffled_option_b,
-        eq.shuffled_option_c,
-        eq.shuffled_option_d
-      FROM questions q
+        COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
+      FROM exam_attempts ea
+      JOIN exam_candidates ec ON ec.exam_id = ea.exam_id AND ec.candidate_id = ea.candidate_id
+      JOIN questions q ON q.id = $3
       LEFT JOIN exam_questions eq ON eq.question_id = q.id 
         AND eq.exam_id = $1 
         AND eq.candidate_id = $2
-      WHERE q.id = $3
+      WHERE ea.exam_id = $1 
+        AND ea.candidate_id = $2 
+        AND ea.status = 'in_progress'
     `, [id, req.user.id, question_id]);
 
-    if (questionResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Question not found' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Active attempt or question not found, or you are not assigned to this exam' });
     }
 
-    const correctAnswer = questionResult.rows[0].correct_answer;
-    const isMultiAnswer = questionResult.rows[0].is_multi_answer;
-    
-    // For multi-answer questions, sort both answers before comparing
-    let isCorrect;
-    if (isMultiAnswer && correctAnswer.includes(',')) {
-      const correctSorted = correctAnswer.split(',').sort().join(',');
-      const answerSorted = (answer || '').split(',').sort().join(',');
-      isCorrect = correctSorted === answerSorted;
-    } else {
-      isCorrect = correctAnswer === answer;
-    }
-    
-    console.log(`🎯 Answer validation for Q${question_id}:`, {
-      candidate_answer: answer,
-      original_correct: questionResult.rows[0].original_correct_answer,
-      shuffled_correct: questionResult.rows[0].shuffled_correct_answer,
-      used_correct_answer: correctAnswer,
-      is_multi_answer: isMultiAnswer,
-      is_correct: isCorrect,
-      has_shuffled_data: !!questionResult.rows[0].shuffled_correct_answer
-    });
-
-    // Validate answer format before saving
-    if (answer && answer.length > 10) {
-      return res.status(400).json({ error: 'Answer is too long. Maximum 10 characters allowed.' });
-    }
+    const attemptId = result.rows[0].attempt_id;
+    const correctAnswer = result.rows[0].correct_answer;
+    const isMultiAnswer = result.rows[0].is_multi_answer;
     
     // Normalize answer format (sort multi-answer values)
     let normalizedAnswer = answer || null;
@@ -708,6 +665,32 @@ router.post('/exams/:id/save-answer', async (req, res) => {
       normalizedAnswer = answers.sort().join(',');
     } else if (normalizedAnswer) {
       normalizedAnswer = normalizedAnswer.trim().toUpperCase();
+    }
+    
+    // For multi-answer questions, sort both answers before comparing
+    let isCorrect;
+    if (isMultiAnswer && correctAnswer.includes(',')) {
+      const correctSorted = correctAnswer.split(',').sort().join(',');
+      const answerSorted = (normalizedAnswer || '').split(',').sort().join(',');
+      isCorrect = correctSorted === answerSorted;
+    } else {
+      isCorrect = correctAnswer === normalizedAnswer;
+    }
+    
+    console.log(`🎯 Answer validation for Q${question_id}:`, {
+      candidate_answer: answer,
+      normalized_answer: normalizedAnswer,
+      original_correct: result.rows[0].original_correct_answer,
+      shuffled_correct: result.rows[0].shuffled_correct_answer,
+      used_correct_answer: correctAnswer,
+      is_multi_answer: isMultiAnswer,
+      is_correct: isCorrect,
+      has_shuffled_data: !!result.rows[0].shuffled_correct_answer
+    });
+
+    // Validate answer format before saving
+    if (answer && answer.length > 10) {
+      return res.status(400).json({ error: 'Answer is too long. Maximum 10 characters allowed.' });
     }
     
     console.log(`💾 Saving answer for Q${question_id}:`, {
@@ -757,86 +740,102 @@ router.post('/exams/:id/submit', async (req, res) => {
     const { id } = req.params;
     const { answers, violations } = req.body;
 
-    // Check if candidate is assigned to this exam
-    const assignmentCheck = await client.query(
-      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
-      [id, req.user.id]
-    );
-
-    if (assignmentCheck.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'You are not assigned to this exam' });
-    }
-
-    // Get attempt
-    const attemptResult = await client.query(
-      'SELECT id, started_at, total_questions FROM exam_attempts WHERE exam_id = $1 AND candidate_id = $2 AND status = \'in_progress\'',
-      [id, req.user.id]
-    );
+    // Check assignment, get attempt, exam details, and calculate time taken in one efficient query
+    const attemptResult = await client.query(`
+      SELECT 
+        ea.id as attempt_id,
+        ea.total_questions,
+        e.pass_mark,
+        ROUND(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ea.started_at))/60) as time_taken_minutes
+      FROM exam_attempts ea
+      JOIN exam_candidates ec ON ec.exam_id = ea.exam_id AND ec.candidate_id = ea.candidate_id
+      JOIN exams e ON e.id = ea.exam_id
+      WHERE ea.exam_id = $1 
+        AND ea.candidate_id = $2 
+        AND ea.status = 'in_progress'
+    `, [id, req.user.id]);
 
     if (attemptResult.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'No active exam attempt found' });
+      return res.status(404).json({ error: 'No active exam attempt found, or you are not assigned to this exam' });
     }
 
     const attempt = attemptResult.rows[0];
-    const attemptId = attempt.id;
+    const attemptId = attempt.attempt_id;
+    const timeTaken = parseInt(attempt.time_taken_minutes) || 0;
+    const passMark = parseFloat(attempt.pass_mark);
 
-    // Calculate time taken (in minutes) - use SQL to avoid timezone issues
-    const timeResult = await client.query(`
-      SELECT ROUND(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))/60) as time_taken_minutes
-      FROM exam_attempts WHERE id = $1
-    `, [attemptId]);
-    const timeTaken = parseInt(timeResult.rows[0]?.time_taken_minutes) || 0;
+    // Save all answers efficiently using bulk operations
+    const questionIds = answers.filter(a => a.answer).map(a => a.question_id);
+    
+    if (questionIds.length > 0) {
+      // 1. Get correct answers for all submitted questions in one query
+      const questionsResult = await client.query(`
+        SELECT 
+          q.id as question_id,
+          q.correct_answer as original_correct_answer,
+          q.is_multi_answer,
+          eq.shuffled_correct_answer,
+          COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
+        FROM questions q
+        LEFT JOIN exam_questions eq ON eq.question_id = q.id 
+          AND eq.exam_id = $1 
+          AND eq.candidate_id = $2
+        WHERE q.id = ANY($3::int[])
+      `, [id, req.user.id, questionIds]);
 
-    // Save all answers
-    for (const ans of answers) {
-      if (ans.answer) {
-        // Get correct answer (use shuffled version if available)
-        const questionResult = await client.query(`
-          SELECT 
-            q.correct_answer as original_correct_answer,
-            q.is_multi_answer,
-            eq.shuffled_correct_answer,
-            COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
-          FROM questions q
-          LEFT JOIN exam_questions eq ON eq.question_id = q.id 
-            AND eq.exam_id = $1 
-            AND eq.candidate_id = $2
-          WHERE q.id = $3
-        `, [id, req.user.id, ans.question_id]);
+      const questionMap = {};
+      for (const row of questionsResult.rows) {
+        questionMap[row.question_id] = row;
+      }
 
-        if (questionResult.rows.length > 0) {
-          const correctAnswer = questionResult.rows[0].correct_answer;
-          const isMultiAnswer = questionResult.rows[0].is_multi_answer;
-          
-          // For multi-answer questions, sort both answers before comparing
-          let isCorrect;
-          if (isMultiAnswer && correctAnswer.includes(',')) {
-            const correctSorted = correctAnswer.split(',').sort().join(',');
-            const answerSorted = (ans.answer || '').split(',').sort().join(',');
-            isCorrect = correctSorted === answerSorted;
-          } else {
-            isCorrect = correctAnswer === ans.answer;
+      // 2. Prepare bulk insert arrays
+      const attemptIds = [];
+      const insertQuestionIds = [];
+      const answerTexts = [];
+      const isCorrects = [];
+
+      for (const ans of answers) {
+        if (ans.answer) {
+          const q = questionMap[ans.question_id];
+          if (q) {
+            const correctAnswer = q.correct_answer;
+            const isMultiAnswer = q.is_multi_answer;
+            
+            // Normalize answer format (sort multi-answer values)
+            let normalizedAnswer = ans.answer || null;
+            if (normalizedAnswer && normalizedAnswer.includes(',')) {
+              const parsedAnswers = normalizedAnswer.split(',').map(a => a.trim().toUpperCase()).filter(Boolean);
+              normalizedAnswer = parsedAnswers.sort().join(',');
+            } else if (normalizedAnswer) {
+              normalizedAnswer = normalizedAnswer.trim().toUpperCase();
+            }
+            
+            let isCorrect;
+            if (isMultiAnswer && correctAnswer.includes(',')) {
+              const correctSorted = correctAnswer.split(',').sort().join(',');
+              const answerSorted = (normalizedAnswer || '').split(',').sort().join(',');
+              isCorrect = correctSorted === answerSorted;
+            } else {
+              isCorrect = correctAnswer === normalizedAnswer;
+            }
+            
+            attemptIds.push(attemptId);
+            insertQuestionIds.push(ans.question_id);
+            answerTexts.push(normalizedAnswer);
+            isCorrects.push(isCorrect);
           }
-          
-          console.log(`🎯 Final validation for Q${ans.question_id}:`, {
-            candidate_answer: ans.answer,
-            original_correct: questionResult.rows[0].original_correct_answer,
-            shuffled_correct: questionResult.rows[0].shuffled_correct_answer,
-            used_correct_answer: correctAnswer,
-            is_multi_answer: isMultiAnswer,
-            is_correct: isCorrect,
-            has_shuffled_data: !!questionResult.rows[0].shuffled_correct_answer
-          });
-
-          await client.query(`
-            INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (attempt_id, question_id) 
-            DO UPDATE SET answer = $3, is_correct = $4
-          `, [attemptId, ans.question_id, ans.answer, isCorrect]);
         }
+      }
+
+      // 3. Bulk insert/update all answers in one query
+      if (attemptIds.length > 0) {
+        await client.query(`
+          INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
+          SELECT * FROM UNNEST($1::int[], $2::int[], $3::text[], $4::boolean[])
+          ON CONFLICT (attempt_id, question_id) 
+          DO UPDATE SET answer = EXCLUDED.answer, is_correct = EXCLUDED.is_correct
+        `, [attemptIds, insertQuestionIds, answerTexts, isCorrects]);
       }
     }
 
@@ -848,13 +847,6 @@ router.post('/exams/:id/submit', async (req, res) => {
 
     const correctAnswers = parseInt(correctCount.rows[0].correct);
     const scorePercentage = (correctAnswers / attempt.total_questions) * 100;
-
-    // Get pass mark
-    const examResult = await client.query(
-      'SELECT pass_mark FROM exams WHERE id = $1',
-      [id]
-    );
-    const passMark = parseFloat(examResult.rows[0].pass_mark);
     const passed = scorePercentage >= passMark;
     
     console.log('📊 Exam submission - Pass/Fail calculation:', {
@@ -864,14 +856,24 @@ router.post('/exams/:id/submit', async (req, res) => {
       comparison: `${scorePercentage} >= ${passMark} = ${passed}`
     });
 
-    // Save violations
+    // Save violations efficiently using bulk insert
     if (violations && violations.length > 0) {
+      const vAttemptIds = [];
+      const vTypes = [];
+      const vDescriptions = [];
+      const vTimestamps = [];
+      
       for (const violation of violations) {
-        await client.query(`
-          INSERT INTO exam_violations (attempt_id, violation_type, description, timestamp)
-          VALUES ($1, $2, $3, $4)
-        `, [attemptId, violation.type, violation.description, violation.timestamp]);
+        vAttemptIds.push(attemptId);
+        vTypes.push(violation.type);
+        vDescriptions.push(violation.description);
+        vTimestamps.push(violation.timestamp || new Date().toISOString());
       }
+      
+      await client.query(`
+        INSERT INTO exam_violations (attempt_id, violation_type, description, timestamp)
+        SELECT * FROM UNNEST($1::int[], $2::varchar[], $3::text[], $4::timestamp[])
+      `, [vAttemptIds, vTypes, vDescriptions, vTimestamps]);
     }
 
     // Update attempt
@@ -911,47 +913,29 @@ router.get('/exams/:id/result', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if candidate is assigned to this exam
-    const assignmentCheck = await db.query(
-      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
-      [id, req.user.id]
-    );
-
-    if (assignmentCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'You are not assigned to this exam' });
-    }
-
-    // Get exam settings
-    const examResult = await db.query(
-      'SELECT show_results FROM exams WHERE id = $1',
-      [id]
-    );
-
-    if (examResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Exam not found' });
-    }
-
-    if (!examResult.rows[0].show_results) {
-      return res.status(403).json({ 
-        error: 'Results are not available yet. Your teacher will share them when ready.' 
-      });
-    }
-
-    // Get result
+    // Get result, verify assignment, and check exam settings in one query
     const result = await db.query(`
       SELECT 
         ea.*,
         e.pass_mark,
         e.title as exam_title,
-        e.subject as exam_subject
+        e.subject as exam_subject,
+        e.show_results
       FROM exam_attempts ea
       JOIN exams e ON ea.exam_id = e.id
+      JOIN exam_candidates ec ON ec.exam_id = e.id AND ec.candidate_id = $2
       WHERE ea.exam_id = $1 AND ea.candidate_id = $2 
         AND ea.status IN ('submitted', 'auto_submitted')
     `, [id, req.user.id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Result not found' });
+      return res.status(404).json({ error: 'Result not found or you are not assigned to this exam' });
+    }
+    
+    if (!result.rows[0].show_results) {
+      return res.status(403).json({ 
+        error: 'Results are not available yet. Your teacher will share them when ready.' 
+      });
     }
 
     const attemptId = result.rows[0].id;
@@ -1069,16 +1053,6 @@ router.get('/exams/:id/time-remaining', authenticateToken, requireCandidate, asy
     const { id } = req.params;
     const candidateId = req.user.id;
 
-    // Check if candidate is assigned to this exam
-    const assignmentCheck = await db.query(
-      'SELECT 1 FROM exam_candidates WHERE exam_id = $1 AND candidate_id = $2',
-      [id, candidateId]
-    );
-
-    if (assignmentCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'You are not assigned to this exam' });
-    }
-
     // Get exam and attempt details - ONLY for THIS candidate
     // Also include end_date to ensure time doesn't exceed exam window
     const result = await db.query(`
@@ -1091,8 +1065,10 @@ router.get('/exams/:id/time-remaining', authenticateToken, requireCandidate, asy
         ea.time_extension_minutes,
         ea.status,
         ea.candidate_id,
-        EXTRACT(EPOCH FROM (e.end_date - CURRENT_TIMESTAMP))/60 as minutes_until_exam_closes
+        EXTRACT(EPOCH FROM (e.end_date - CURRENT_TIMESTAMP))/60 as minutes_until_exam_closes,
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ea.started_at))/60 as elapsed_minutes
       FROM exams e
+      JOIN exam_candidates ec ON ec.exam_id = e.id AND ec.candidate_id = $2
       LEFT JOIN exam_attempts ea ON ea.exam_id = e.id AND ea.candidate_id = $2
       WHERE e.id = $1
     `, [id, candidateId]);
@@ -1106,7 +1082,7 @@ router.get('/exams/:id/time-remaining', authenticateToken, requireCandidate, asy
     });
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Exam not found' });
+      return res.status(404).json({ error: 'Exam not found or you are not assigned to this exam' });
     }
 
     const exam = result.rows[0];
@@ -1145,15 +1121,7 @@ router.get('/exams/:id/time-remaining', authenticateToken, requireCandidate, asy
 
     // Calculate time remaining for active exam
     // Consider both elapsed time AND exam end_date
-    const timeCalc = await db.query(`
-      SELECT 
-        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1))/60 as elapsed_minutes
-      FROM exam_attempts 
-      WHERE exam_id = $2 AND candidate_id = $3
-      LIMIT 1
-    `, [exam.started_at, id, candidateId]);
-    
-    const elapsedMinutes = parseFloat(timeCalc.rows[0]?.elapsed_minutes) || 0;
+    const elapsedMinutes = parseFloat(exam.elapsed_minutes) || 0;
     
     // Calculate remaining based on allocated time minus elapsed
     const remainingFromAllocation = Math.max(0, allocatedTime - elapsedMinutes);

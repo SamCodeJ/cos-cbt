@@ -217,26 +217,46 @@ export default function CreateExam() {
 
           // Delete removed candidates
           if (removedCandidates.length > 0) {
-            await Promise.all(
-              removedCandidates.map(c => examAPI.removeCandidate(examId, c.id))
-            );
+            // Batch delete candidates if needed, but usually it's one by one or we can just use Promise.all for small amounts
+            // To be safe with large deletions, we can batch them too
+            const BATCH_SIZE = 50;
+            for (let i = 0; i < removedCandidates.length; i += BATCH_SIZE) {
+              const batch = removedCandidates.slice(i, i + BATCH_SIZE);
+              await Promise.all(batch.map(c => examAPI.removeCandidate(examId, c.id)));
+            }
           }
 
           // Find new candidates that need to be added (don't have an id from backend)
           const newCandidates = candidates.filter(c => !originalCandidates.some(oc => oc.id === c.id));
           
           if (newCandidates.length > 0) {
-            await examAPI.addCandidates(examId, newCandidates);
+            const BATCH_SIZE = 250;
+            for (let i = 0; i < newCandidates.length; i += BATCH_SIZE) {
+              const batch = newCandidates.slice(i, i + BATCH_SIZE);
+              await examAPI.addCandidates(examId, batch);
+            }
           }
 
           // Replace all questions (clear and re-add)
-          await examAPI.addQuestions(examId, questions, true); // replace=true
+          const BATCH_SIZE = 250;
+          for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+            const batch = questions.slice(i, i + BATCH_SIZE);
+            const isFirstBatch = i === 0;
+            await examAPI.addQuestions(examId, batch, isFirstBatch); // replace=true only for the first batch
+          }
         } else {
           // No original candidates, just add all
-          await Promise.all([
-            examAPI.addCandidates(examId, candidates),
-            examAPI.addQuestions(examId, questions, true), // replace=true for consistency
-          ]);
+          const BATCH_SIZE = 250;
+          for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+            const batch = candidates.slice(i, i + BATCH_SIZE);
+            await examAPI.addCandidates(examId, batch);
+          }
+
+          for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+            const batch = questions.slice(i, i + BATCH_SIZE);
+            const isFirstBatch = i === 0;
+            await examAPI.addQuestions(examId, batch, isFirstBatch); // replace=true only for the first batch
+          }
         }
 
         toast.success('Exam updated successfully');
@@ -244,11 +264,18 @@ export default function CreateExam() {
         const newExam = await examAPI.create(formattedData);
         examId = newExam.id;
         
-        // Save candidates and questions for new exam
-        await Promise.all([
-          examAPI.addCandidates(examId, candidates),
-          examAPI.addQuestions(examId, questions),
-        ]);
+        // Save candidates and questions for new exam in batches
+        const BATCH_SIZE = 250;
+        
+        for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+          const batch = candidates.slice(i, i + BATCH_SIZE);
+          await examAPI.addCandidates(examId, batch);
+        }
+
+        for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+          const batch = questions.slice(i, i + BATCH_SIZE);
+          await examAPI.addQuestions(examId, batch);
+        }
 
         toast.success('Exam created successfully');
       }
