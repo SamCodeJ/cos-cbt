@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Save, Upload, Plus, X, Loader2, Download, Trash2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Save, Upload, Plus, X, Loader2, Download, Trash2, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const examSchema = z.object({
