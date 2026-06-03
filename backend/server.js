@@ -64,9 +64,7 @@ if (cluster.isPrimary || cluster.isMaster) {
     'http://localhost:19006',
     'https://segiu.shop',
     'https://www.segiu.shop',
-    'https://app.segiu.shop',
-    'http://ccos.shop',
-    'http://www.ccos.shop'
+    'https://app.segiu.shop'
   ];
 
   app.use(cors({
