@@ -29,9 +29,9 @@ router.post('/auth/login',
 
       const { student_id, password } = req.body;
 
-      // Find candidate by student_id
+      // Find candidate by student_id (case-insensitive and trim whitespace)
       const result = await db.query(
-        'SELECT id, name, email, password, role, student_id, is_active FROM users WHERE student_id = $1 AND role = \'candidate\'',
+        'SELECT id, name, email, password, role, student_id, is_active FROM users WHERE LOWER(TRIM(student_id)) = LOWER(TRIM($1)) AND role = \'candidate\'',
         [student_id]
       );
 
@@ -626,21 +626,66 @@ router.post('/exams/:id/start', async (req, res) => {
 });
 
 // POST /api/candidate/exams/:id/save-answer - Save answer
+// Optimized: Uses in-memory batching to reduce DB load
+const autosaveBuffer = new Map();
+let isFlushing = false;
+
+const flushAutosaves = async () => {
+  if (isFlushing || autosaveBuffer.size === 0) return;
+  isFlushing = true;
+  
+  const entries = Array.from(autosaveBuffer.values());
+  autosaveBuffer.clear();
+  
+  try {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      // Group by attempt_id to minimize queries
+      for (const entry of entries) {
+        const { attemptId, question_id, normalizedAnswer, isCorrect } = entry;
+        
+        await client.query(`
+          INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (attempt_id, question_id) 
+          DO UPDATE SET answer = $3, is_correct = $4, answered_at = CURRENT_TIMESTAMP
+        `, [attemptId, question_id, normalizedAnswer, isCorrect]);
+      }
+      
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('❌ Bulk autosave flush error:', err.message);
+      // Re-add to buffer on failure
+      entries.forEach(e => autosaveBuffer.set(`${e.attemptId}-${e.question_id}`, e));
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('❌ Failed to get DB client for flush:', err.message);
+  } finally {
+    isFlushing = false;
+  }
+};
+
+// Flush every 5 seconds
+setInterval(flushAutosaves, 5000);
+
 router.post('/exams/:id/save-answer', async (req, res) => {
   try {
     const { id } = req.params;
     const { question_id, answer } = req.body;
 
-    // Combine assignment check, attempt fetch, and question fetch into a single efficient query
+    // Fast path: Just get attempt ID and correct answer
     const result = await db.query(`
       SELECT 
         ea.id as attempt_id,
         q.correct_answer as original_correct_answer,
         q.is_multi_answer,
-        eq.shuffled_correct_answer,
         COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
       FROM exam_attempts ea
-      JOIN exam_candidates ec ON ec.exam_id = ea.exam_id AND ec.candidate_id = ea.candidate_id
       JOIN questions q ON q.id = $3
       LEFT JOIN exam_questions eq ON eq.question_id = q.id 
         AND eq.exam_id = $1 
@@ -651,14 +696,14 @@ router.post('/exams/:id/save-answer', async (req, res) => {
     `, [id, req.user.id, question_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Active attempt or question not found, or you are not assigned to this exam' });
+      return res.status(404).json({ error: 'Active attempt or question not found' });
     }
 
     const attemptId = result.rows[0].attempt_id;
     const correctAnswer = result.rows[0].correct_answer;
     const isMultiAnswer = result.rows[0].is_multi_answer;
     
-    // Normalize answer format (sort multi-answer values)
+    // Normalize answer format
     let normalizedAnswer = answer || null;
     if (normalizedAnswer && normalizedAnswer.includes(',')) {
       const answers = normalizedAnswer.split(',').map(a => a.trim().toUpperCase()).filter(Boolean);
@@ -667,7 +712,6 @@ router.post('/exams/:id/save-answer', async (req, res) => {
       normalizedAnswer = normalizedAnswer.trim().toUpperCase();
     }
     
-    // For multi-answer questions, sort both answers before comparing
     let isCorrect;
     if (isMultiAnswer && correctAnswer.includes(',')) {
       const correctSorted = correctAnswer.split(',').sort().join(',');
@@ -677,56 +721,23 @@ router.post('/exams/:id/save-answer', async (req, res) => {
       isCorrect = correctAnswer === normalizedAnswer;
     }
     
-    console.log(`🎯 Answer validation for Q${question_id}:`, {
-      candidate_answer: answer,
-      normalized_answer: normalizedAnswer,
-      original_correct: result.rows[0].original_correct_answer,
-      shuffled_correct: result.rows[0].shuffled_correct_answer,
-      used_correct_answer: correctAnswer,
-      is_multi_answer: isMultiAnswer,
-      is_correct: isCorrect,
-      has_shuffled_data: !!result.rows[0].shuffled_correct_answer
-    });
-
     // Validate answer format before saving
     if (answer && answer.length > 10) {
       return res.status(400).json({ error: 'Answer is too long. Maximum 10 characters allowed.' });
     }
     
-    console.log(`💾 Saving answer for Q${question_id}:`, {
-      original_answer: answer,
-      normalized_answer: normalizedAnswer,
-      is_correct: isCorrect,
-      is_multi_answer: isMultiAnswer
+    // Add to in-memory buffer instead of writing to DB immediately
+    autosaveBuffer.set(`${attemptId}-${question_id}`, {
+      attemptId,
+      question_id,
+      normalizedAnswer,
+      isCorrect
     });
 
-    // Insert or update answer
-    await db.query(`
-      INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (attempt_id, question_id) 
-      DO UPDATE SET answer = $3, is_correct = $4, answered_at = CURRENT_TIMESTAMP
-    `, [attemptId, question_id, normalizedAnswer, isCorrect]);
-
-    res.json({ message: 'Answer saved successfully' });
+    res.json({ message: 'Answer saved successfully (buffered)' });
   } catch (error) {
-    console.error('❌ Save answer error:', error);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error code:', error.code);
-    console.error('❌ Error detail:', error.detail);
-    console.error('❌ Error hint:', error.hint);
-    console.error('❌ Error stack:', error.stack);
-    
-    res.status(500).json({ 
-      error: 'Failed to save answer',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        code: error.code,
-        detail: error.detail,
-        hint: error.hint
-      } : undefined
-    });
+    console.error('❌ Save answer error:', error.message);
+    res.status(500).json({ error: 'Failed to save answer' });
   }
 });
 
@@ -757,6 +768,14 @@ router.post('/exams/:id/submit', async (req, res) => {
 
     if (attemptResult.rows.length === 0) {
       await client.query('ROLLBACK');
+      // Instead of throwing an error, check if it's already submitted. If it is, just return success.
+      const checkSubmitted = await db.query(
+        "SELECT id FROM exam_attempts WHERE exam_id = $1 AND candidate_id = $2 AND status IN ('submitted', 'auto_submitted')",
+        [id, req.user.id]
+      );
+      if (checkSubmitted.rows.length > 0) {
+        return res.json({ message: 'Exam was already submitted successfully' });
+      }
       return res.status(404).json({ error: 'No active exam attempt found, or you are not assigned to this exam' });
     }
 
@@ -767,6 +786,20 @@ router.post('/exams/:id/submit', async (req, res) => {
 
     // Save all answers efficiently using bulk operations
     const questionIds = answers.filter(a => a.answer).map(a => a.question_id);
+    
+    // Ensure we flush any pending autosaves for this attempt before calculating final score
+    if (autosaveBuffer.size > 0) {
+      const pendingEntries = Array.from(autosaveBuffer.values()).filter(e => e.attemptId === attemptId);
+      for (const entry of pendingEntries) {
+        autosaveBuffer.delete(`${entry.attemptId}-${entry.question_id}`);
+        await client.query(`
+          INSERT INTO exam_answers (attempt_id, question_id, answer, is_correct)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (attempt_id, question_id) 
+          DO UPDATE SET answer = $3, is_correct = $4, answered_at = CURRENT_TIMESTAMP
+        `, [entry.attemptId, entry.question_id, entry.normalizedAnswer, entry.isCorrect]);
+      }
+    }
     
     if (questionIds.length > 0) {
       // 1. Get correct answers for all submitted questions in one query
@@ -839,7 +872,7 @@ router.post('/exams/:id/submit', async (req, res) => {
       }
     }
 
-    // Count correct answers
+    // Count correct answers directly from the database to ensure 100% accuracy
     const correctCount = await client.query(
       'SELECT COUNT(*) as correct FROM exam_answers WHERE attempt_id = $1 AND is_correct = true',
       [attemptId]
@@ -849,12 +882,7 @@ router.post('/exams/:id/submit', async (req, res) => {
     const scorePercentage = (correctAnswers / attempt.total_questions) * 100;
     const passed = scorePercentage >= passMark;
     
-    console.log('📊 Exam submission - Pass/Fail calculation:', {
-      scorePercentage,
-      passMark,
-      passed,
-      comparison: `${scorePercentage} >= ${passMark} = ${passed}`
-    });
+    // Removed synchronous logging for performance
 
     // Save violations efficiently using bulk insert
     if (violations && violations.length > 0) {
@@ -941,22 +969,22 @@ router.get('/exams/:id/result', async (req, res) => {
     const attemptId = result.rows[0].id;
 
     // Get answers with questions (use shuffled options if available)
+    // We use a FULL OUTER JOIN or just get all questions assigned to this candidate
+    // so that questions they didn't answer still appear in the result screen.
     const answersResult = await db.query(`
       SELECT 
         ans.answer as your_answer,
-        ans.is_correct,
+        COALESCE(ans.is_correct, false) as is_correct,
         q.question_text,
         COALESCE(eq.shuffled_option_a, q.option_a) as option_a,
         COALESCE(eq.shuffled_option_b, q.option_b) as option_b,
         COALESCE(eq.shuffled_option_c, q.option_c) as option_c,
         COALESCE(eq.shuffled_option_d, q.option_d) as option_d,
         COALESCE(eq.shuffled_correct_answer, q.correct_answer) as correct_answer
-      FROM exam_answers ans
-      JOIN questions q ON ans.question_id = q.id
-      LEFT JOIN exam_questions eq ON eq.question_id = q.id 
-        AND eq.exam_id = $2
-        AND eq.candidate_id = $3
-      WHERE ans.attempt_id = $1
+      FROM exam_questions eq
+      JOIN questions q ON eq.question_id = q.id
+      LEFT JOIN exam_answers ans ON ans.question_id = q.id AND ans.attempt_id = $1
+      WHERE eq.exam_id = $2 AND eq.candidate_id = $3
       ORDER BY eq.question_order
     `, [attemptId, id, req.user.id]);
 
