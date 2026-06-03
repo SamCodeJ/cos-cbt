@@ -172,7 +172,7 @@ if (!cluster.isPrimary && !cluster.isMaster) {
       await db.query('SELECT NOW()');
       console.log(`✅ Worker ${process.pid} Database connection successful`);
     } catch (error) {
-      console.error(`❌ Worker ${process.pid} Database connection failed:`, error.message);
+      console.error(`❌ Worker ${process.pid} Database connection failed:`, error);
     }
   });
 }
