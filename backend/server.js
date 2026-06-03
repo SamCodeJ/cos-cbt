@@ -166,9 +166,9 @@ if (cluster.isPrimary || cluster.isMaster) {
     // Test database connection
     try {
       await db.query('SELECT NOW()');
-      console.log(\`✅ Worker \${process.pid} Database connection successful\`);
+      console.log(`✅ Worker ${process.pid} Database connection successful`);
     } catch (error) {
-      console.error(\`❌ Worker \${process.pid} Database connection failed:\`, error.message);
+      console.error(`❌ Worker ${process.pid} Database connection failed:`, error.message);
     }
   });
 }
