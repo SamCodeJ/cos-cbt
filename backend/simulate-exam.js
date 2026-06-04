@@ -101,6 +101,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function simulateStudent(student) {
   try {
     // 1. LOGIN
+    console.log(`Attempting login for ${student.student_id}...`);
     const loginRes = await makeRequest('/candidate/auth/login', 'POST', student);
     if (loginRes.status !== 200) {
       console.log(`❌ Login failed for ${student.student_id}: Status ${loginRes.status} | Response: ${JSON.stringify(loginRes.data)}`);
@@ -158,7 +159,10 @@ async function simulateStudent(student) {
     }
 
   } catch (err) {
-    console.log(`💥 Error for ${student.student_id}: ${err.stack || err.message || JSON.stringify(err)}`);
+    console.log(`💥 Error for ${student.student_id}:`);
+    console.dir(err, { depth: null });
+    if (err.message) console.log('Message:', err.message);
+    if (err.stack) console.log('Stack:', err.stack);
   }
 }
 
