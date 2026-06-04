@@ -126,19 +126,7 @@ async function simulateStudent(student) {
       return;
     }
     
-    // Extract real question IDs from the exam response
-    // The response structure might be { exam: {...}, questions: [...] } or just an array
     let realQuestionIds = [];
-    if (examRes.data && Array.isArray(examRes.data.questions)) {
-      realQuestionIds = examRes.data.questions.map(q => q.id || q.question_id);
-    } else if (Array.isArray(examRes.data)) {
-      realQuestionIds = examRes.data.map(q => q.id || q.question_id);
-    } else if (examRes.data && examRes.data.exam && Array.isArray(examRes.data.exam.questions)) {
-      realQuestionIds = examRes.data.exam.questions.map(q => q.id || q.question_id);
-    } else {
-      // If the questions aren't in the initial fetch, we need to get them from the /start endpoint
-      // We will extract them after the startRes below!
-    }
     
     // 2.5 START EXAM (This creates the attempt in the database!)
     const startRes = await makeRequest(`/candidate/exams/${EXAM_ID}/start`, 'POST', {}, token);
@@ -147,13 +135,18 @@ async function simulateStudent(student) {
       return;
     }
     
-    // Extract questions from the /start response if they weren't in the /fetch response
-    if (realQuestionIds.length === 0 && startRes.data && Array.isArray(startRes.data.questions)) {
+    // Extract questions from the /start response
+    if (startRes.data && Array.isArray(startRes.data.questions)) {
+      realQuestionIds = startRes.data.questions.map(q => q.id || q.question_id);
+    } else if (startRes.data && startRes.data.attempt && Array.isArray(startRes.data.questions)) {
+      realQuestionIds = startRes.data.questions.map(q => q.id || q.question_id);
+    } else if (startRes.status === 400 && startRes.data && startRes.data.questions) {
+      // If they already started, the API might return the questions anyway
       realQuestionIds = startRes.data.questions.map(q => q.id || q.question_id);
     }
     
     if (realQuestionIds.length === 0) {
-      console.log(`⚠️ WARNING: Could not extract real question IDs for ${student.student_id}. Using fallback IDs 1, 2, 3...`);
+      console.log(`⚠️ WARNING: Could not extract real question IDs for ${student.student_id}. Start response format:`, Object.keys(startRes.data || {}));
     }
     // console.log(`✅ ${student.student_id} started the exam.`);
     
