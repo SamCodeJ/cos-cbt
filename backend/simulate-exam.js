@@ -126,6 +126,21 @@ async function simulateStudent(student) {
       return;
     }
     
+    // Extract real question IDs from the exam response
+    // The response structure might be { exam: {...}, questions: [...] } or just an array
+    let realQuestionIds = [];
+    if (examRes.data && Array.isArray(examRes.data.questions)) {
+      realQuestionIds = examRes.data.questions.map(q => q.id || q.question_id);
+    } else if (Array.isArray(examRes.data)) {
+      realQuestionIds = examRes.data.map(q => q.id || q.question_id);
+    } else if (examRes.data && examRes.data.exam && Array.isArray(examRes.data.exam.questions)) {
+      realQuestionIds = examRes.data.exam.questions.map(q => q.id || q.question_id);
+    }
+    
+    if (realQuestionIds.length === 0) {
+      console.log(`⚠️ WARNING: Could not extract real question IDs from exam response for ${student.student_id}. Response format:`, Object.keys(examRes.data || {}));
+    }
+    
     // 2.5 START EXAM (This creates the attempt in the database!)
     const startRes = await makeRequest(`/candidate/exams/${EXAM_ID}/start`, 'POST', {}, token);
     if (startRes.status !== 200 && startRes.status !== 400) { // 400 might mean already started
@@ -138,18 +153,16 @@ async function simulateStudent(student) {
     const answers = [];
     const options = ['A', 'B', 'C', 'D'];
     
-    for (let i = 1; i <= QUESTIONS_TO_ANSWER; i++) {
+    // Determine how many questions to answer (either the config limit or the total available)
+    const questionsToAnswer = Math.min(QUESTIONS_TO_ANSWER, realQuestionIds.length > 0 ? realQuestionIds.length : 5);
+    
+    for (let i = 0; i < questionsToAnswer; i++) {
       await sleep(AUTOSAVE_INTERVAL_MS); // Wait 20 seconds between answers
       
       const randomAnswer = options[Math.floor(Math.random() * options.length)];
       
-      // Get a real question ID from the fetched exam data if possible, otherwise use index
-      let questionId = i;
-      if (examRes.data && examRes.data.questions && examRes.data.questions[i-1]) {
-        questionId = examRes.data.questions[i-1].id;
-      } else {
-        console.log(`⚠️ WARNING: Could not find real question ID for index ${i-1}. Using fallback ID ${i}`);
-      }
+      // Use the real question ID if we found them, otherwise fallback to 1, 2, 3...
+      const questionId = realQuestionIds.length > 0 ? realQuestionIds[i] : (i + 1);
       
       answers.push({ question_id: questionId, answer: randomAnswer });
       
