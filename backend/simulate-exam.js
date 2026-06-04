@@ -106,9 +106,16 @@ async function simulateStudent(student) {
   try {
     // 1. LOGIN
     console.log(`Attempting login for ${student.student_id}...`);
-    const loginRes = await makeRequest('/candidate/auth/login', 'POST', student);
+    let loginRes;
+    try {
+      loginRes = await makeRequest('/candidate/auth/login', 'POST', student);
+    } catch (e) {
+      console.log(`❌ Network/Code error during login for ${student.student_id}:`, e);
+      return;
+    }
+    
     if (loginRes.status !== 200) {
-      console.log(`❌ Login failed for ${student.student_id}: Status ${loginRes.status} | Response: ${JSON.stringify(loginRes.data)}`);
+      console.log(`❌ Login rejected for ${student.student_id}: Status ${loginRes.status} | Response: ${JSON.stringify(loginRes.data)}`);
       return;
     }
     const token = loginRes.data.token;
@@ -163,7 +170,7 @@ async function simulateStudent(student) {
     }
 
   } catch (err) {
-    console.log(`💥 Error for ${student.student_id}:`);
+    console.log(`💥 CRITICAL CRASH for ${student.student_id}:`);
     console.log(err);
   }
 }
