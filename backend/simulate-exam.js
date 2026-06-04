@@ -135,10 +135,9 @@ async function simulateStudent(student) {
       realQuestionIds = examRes.data.map(q => q.id || q.question_id);
     } else if (examRes.data && examRes.data.exam && Array.isArray(examRes.data.exam.questions)) {
       realQuestionIds = examRes.data.exam.questions.map(q => q.id || q.question_id);
-    }
-    
-    if (realQuestionIds.length === 0) {
-      console.log(`⚠️ WARNING: Could not extract real question IDs from exam response for ${student.student_id}. Response format:`, Object.keys(examRes.data || {}));
+    } else {
+      // If the questions aren't in the initial fetch, we need to get them from the /start endpoint
+      // We will extract them after the startRes below!
     }
     
     // 2.5 START EXAM (This creates the attempt in the database!)
@@ -146,6 +145,15 @@ async function simulateStudent(student) {
     if (startRes.status !== 200 && startRes.status !== 400) { // 400 might mean already started
       console.log(`❌ Start exam failed for ${student.student_id}: Status ${startRes.status} | Response: ${JSON.stringify(startRes.data)}`);
       return;
+    }
+    
+    // Extract questions from the /start response if they weren't in the /fetch response
+    if (realQuestionIds.length === 0 && startRes.data && Array.isArray(startRes.data.questions)) {
+      realQuestionIds = startRes.data.questions.map(q => q.id || q.question_id);
+    }
+    
+    if (realQuestionIds.length === 0) {
+      console.log(`⚠️ WARNING: Could not extract real question IDs for ${student.student_id}. Using fallback IDs 1, 2, 3...`);
     }
     // console.log(`✅ ${student.student_id} started the exam.`);
     
