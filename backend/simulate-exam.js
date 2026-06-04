@@ -65,7 +65,10 @@ async function makeRequest(endpoint, method, body = null, token = null) {
   };
 
   if (token) options.headers['Authorization'] = `Bearer ${token}`;
-  if (body) options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(body));
+  if (body) {
+    const bodyString = JSON.stringify(body);
+    options.headers['Content-Length'] = Buffer.byteLength(bodyString);
+  }
 
   return new Promise((resolve, reject) => {
     const req = (isHttps ? https : http).request(url, options, (res) => {
@@ -81,9 +84,12 @@ async function makeRequest(endpoint, method, body = null, token = null) {
     });
 
     req.on('error', (err) => {
-      reject(new Error(`HTTP Request failed: ${err.message}`));
+      reject(new Error(`Network Error: ${err.message}`));
     });
-    if (body) req.write(JSON.stringify(body));
+    
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
     req.end();
   });
 }
@@ -152,7 +158,7 @@ async function simulateStudent(student) {
     }
 
   } catch (err) {
-    console.log(`💥 Error for ${student.student_id}: ${err.message || JSON.stringify(err)}`);
+    console.log(`💥 Error for ${student.student_id}: ${err.stack || err.message || JSON.stringify(err)}`);
   }
 }
 
