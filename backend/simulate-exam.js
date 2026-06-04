@@ -56,46 +56,44 @@ async function getRealStudents() {
 // Helper to make HTTP requests
 async function makeRequest(endpoint, method, body = null, token = null) {
   const url = new URL(`${BASE_URL}${endpoint}`);
+  
+  // Use the built-in fetch API instead of the low-level http/https modules
+  // This is much more reliable and throws standard Error objects
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const options = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    agent: requestAgent
+    headers,
   };
-
-  if (token) options.headers['Authorization'] = `Bearer ${token}`;
+  
   if (body) {
-    const bodyString = JSON.stringify(body);
-    options.headers['Content-Length'] = Buffer.byteLength(bodyString);
+    options.body = JSON.stringify(body);
   }
-
-  return new Promise((resolve, reject) => {
-    try {
-      const req = (isHttps ? https : http).request(url, options, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          try {
-            resolve({ status: res.statusCode, data: data ? JSON.parse(data) : null });
-          } catch (e) {
-            resolve({ status: res.statusCode, data: data });
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        reject(new Error(`Network Error: ${err.message}`));
-      });
-      
-      if (body) {
-        req.write(JSON.stringify(body));
+  
+  try {
+    const response = await fetch(url, options);
+    let data = null;
+    
+    const text = await response.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = text;
       }
-      req.end();
-    } catch (err) {
-      reject(new Error(`Synchronous Request Error: ${err.message}`));
     }
-  });
+    
+    return { status: response.status, data };
+  } catch (error) {
+    // This will catch network errors (ECONNREFUSED, ETIMEDOUT, etc)
+    throw new Error(`Fetch failed: ${error.message}`);
+  }
 }
 
 // Sleep helper
@@ -170,8 +168,7 @@ async function simulateStudent(student) {
     }
 
   } catch (err) {
-    console.log(`💥 CRITICAL CRASH for ${student.student_id}:`);
-    console.log(err);
+    console.log(`💥 CRITICAL CRASH for ${student.student_id}: ${err.message || 'Unknown Error'}`);
   }
 }
 
