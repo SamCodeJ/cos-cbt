@@ -71,26 +71,30 @@ async function makeRequest(endpoint, method, body = null, token = null) {
   }
 
   return new Promise((resolve, reject) => {
-    const req = (isHttps ? https : http).request(url, options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve({ status: res.statusCode, data: data ? JSON.parse(data) : null });
-        } catch (e) {
-          resolve({ status: res.statusCode, data: data });
-        }
+    try {
+      const req = (isHttps ? https : http).request(url, options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, data: data ? JSON.parse(data) : null });
+          } catch (e) {
+            resolve({ status: res.statusCode, data: data });
+          }
+        });
       });
-    });
 
-    req.on('error', (err) => {
-      reject(new Error(`Network Error: ${err.message}`));
-    });
-    
-    if (body) {
-      req.write(JSON.stringify(body));
+      req.on('error', (err) => {
+        reject(new Error(`Network Error: ${err.message}`));
+      });
+      
+      if (body) {
+        req.write(JSON.stringify(body));
+      }
+      req.end();
+    } catch (err) {
+      reject(new Error(`Synchronous Request Error: ${err.message}`));
     }
-    req.end();
   });
 }
 
@@ -160,9 +164,7 @@ async function simulateStudent(student) {
 
   } catch (err) {
     console.log(`💥 Error for ${student.student_id}:`);
-    console.dir(err, { depth: null });
-    if (err.message) console.log('Message:', err.message);
-    if (err.stack) console.log('Stack:', err.stack);
+    console.log(err);
   }
 }
 
