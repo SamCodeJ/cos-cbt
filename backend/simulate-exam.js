@@ -132,6 +132,7 @@ async function simulateStudent(student) {
       console.log(`❌ Start exam failed for ${student.student_id}: Status ${startRes.status} | Response: ${JSON.stringify(startRes.data)}`);
       return;
     }
+    // console.log(`✅ ${student.student_id} started the exam.`);
     
     // 3. SIMULATE ANSWERING QUESTIONS
     const answers = [];
