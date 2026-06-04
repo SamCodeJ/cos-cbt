@@ -17,9 +17,9 @@ require('dotenv').config({ path: __dirname + '/.env' }); // Load DB credentials 
 const pool = new Pool({
   host: '127.0.0.1', // Use localhost because the script will run ON the server
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'gesDB', 
-  user: process.env.DB_USER || 'postgres',
-  password: String(process.env.DB_PASSWORD || 'admin'), 
+  database: process.env.DB_NAME || 'cos_db',
+  user: process.env.DB_USER || 'cos_user',
+  password: String(process.env.DB_PASSWORD || 'cos_pass'),
 });
 // =================================================
 
