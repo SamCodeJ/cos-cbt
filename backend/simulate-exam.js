@@ -4,20 +4,22 @@ const https = require('https');
 const { Pool } = require('pg');
 
 // ================= CONFIGURATION =================
-const BASE_URL = 'http://localhost:3001/api'; // Change to your VPS IP if running externally
-const EXAM_ID = 1; // The ID of the exam to test
+const BASE_URL = 'http://127.0.0.1:3001/api'; // Use localhost because the script will run ON the server
+const EXAM_ID = 31; // The ID of the exam to test
 const TOTAL_STUDENTS = 500; // How many students to simulate
 const RAMP_UP_TIME_MS = 60000; // Spread logins over 60 seconds
 const AUTOSAVE_INTERVAL_MS = 20000; // Autosave every 20 seconds
 const QUESTIONS_TO_ANSWER = 5; // How many questions each student will answer before submitting
 
+require('dotenv').config({ path: __dirname + '/.env' }); // Load DB credentials first
+
 // Database connection to fetch real students
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
+  host: '127.0.0.1', // Use localhost because the script will run ON the server
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'uiges_db',
+  database: process.env.DB_NAME || 'gesDB', 
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
+  password: String(process.env.DB_PASSWORD || 'admin'), 
 });
 // =================================================
 
@@ -78,7 +80,9 @@ async function makeRequest(endpoint, method, body = null, token = null) {
       });
     });
 
-    req.on('error', reject);
+    req.on('error', (err) => {
+      reject(new Error(`HTTP Request failed: ${err.message}`));
+    });
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
@@ -148,14 +152,12 @@ async function simulateStudent(student) {
     }
 
   } catch (err) {
-    console.log(`💥 Error for ${student.student_id}: ${err.message}`);
+    console.log(`💥 Error for ${student.student_id}: ${err.message || JSON.stringify(err)}`);
   }
 }
 
 // Main Execution
 async function runLoadTest() {
-  require('dotenv').config(); // Load DB credentials
-  
   const students = await getRealStudents();
   
   console.log(`🚀 Starting Load Test with ${students.length} students...`);
