@@ -147,6 +147,8 @@ async function simulateStudent(student) {
       let questionId = i;
       if (examRes.data && examRes.data.questions && examRes.data.questions[i-1]) {
         questionId = examRes.data.questions[i-1].id;
+      } else {
+        console.log(`⚠️ WARNING: Could not find real question ID for index ${i-1}. Using fallback ID ${i}`);
       }
       
       answers.push({ question_id: questionId, answer: randomAnswer });
