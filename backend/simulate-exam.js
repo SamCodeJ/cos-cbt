@@ -6,10 +6,10 @@ const { Pool } = require('pg');
 // ================= CONFIGURATION =================
 const BASE_URL = 'http://127.0.0.1:5000/api'; // Changed to port 5000 based on netstat output
 const EXAM_ID = 31; // The ID of the exam to test
-const TOTAL_STUDENTS = 500; // How many students to simulate
-const RAMP_UP_TIME_MS = 60000; // Spread logins over 60 seconds
+const TOTAL_STUDENTS = 1500; // How many students to simulate
+const RAMP_UP_TIME_MS = 120000; // Spread logins over 120 seconds (2 minutes) to simulate a realistic start
 const AUTOSAVE_INTERVAL_MS = 20000; // Autosave every 20 seconds
-const QUESTIONS_TO_ANSWER = 5; // How many questions each student will answer before submitting
+const QUESTIONS_TO_ANSWER = 60; // How many questions each student will answer before submitting
 
 require('dotenv').config({ path: __dirname + '/.env' }); // Load DB credentials first
 
