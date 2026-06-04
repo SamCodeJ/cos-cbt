@@ -4,7 +4,7 @@ const https = require('https');
 const { Pool } = require('pg');
 
 // ================= CONFIGURATION =================
-const BASE_URL = 'http://127.0.0.1:3001/api'; // Use localhost because the script will run ON the server
+const BASE_URL = 'http://127.0.0.1:5000/api'; // Changed to port 5000 based on netstat output
 const EXAM_ID = 31; // The ID of the exam to test
 const TOTAL_STUDENTS = 500; // How many students to simulate
 const RAMP_UP_TIME_MS = 60000; // Spread logins over 60 seconds
@@ -31,7 +31,7 @@ async function getRealStudents() {
   console.log(`🔍 Fetching real students assigned to Exam ${EXAM_ID}...`);
   try {
     const result = await pool.query(`
-      SELECT u.student_id, 'password' as password -- Assuming default password or you can modify this
+      SELECT u.student_id, u.student_id as password -- Assuming password is the same as student_id
       FROM users u
       JOIN exam_candidates ec ON ec.candidate_id = u.id
       WHERE ec.exam_id = $1 AND u.role = 'candidate'
@@ -123,6 +123,13 @@ async function simulateStudent(student) {
     const examRes = await makeRequest(`/candidate/exams/${EXAM_ID}`, 'GET', null, token);
     if (examRes.status !== 200) {
       console.log(`❌ Fetch exam failed for ${student.student_id}: Status ${examRes.status} | Response: ${JSON.stringify(examRes.data)}`);
+      return;
+    }
+    
+    // 2.5 START EXAM (This creates the attempt in the database!)
+    const startRes = await makeRequest(`/candidate/exams/${EXAM_ID}/start`, 'POST', {}, token);
+    if (startRes.status !== 200 && startRes.status !== 400) { // 400 might mean already started
+      console.log(`❌ Start exam failed for ${student.student_id}: Status ${startRes.status} | Response: ${JSON.stringify(startRes.data)}`);
       return;
     }
     
