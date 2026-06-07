@@ -303,6 +303,53 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/question-bank/bulk-delete - Bulk delete questions
+router.post('/bulk-delete', async (req, res) => {
+  const client = await db.getClient();
+  try {
+    const { questionIds } = req.body;
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      return res.status(400).json({ error: 'Question IDs array is required' });
+    }
+
+    await client.query('BEGIN');
+
+    // Check permissions for all questions
+    if (req.user.role === 'teacher') {
+      const checkResult = await client.query(`
+        SELECT q.id
+        FROM questions q
+        LEFT JOIN exams e ON q.exam_id = e.id
+        WHERE q.id = ANY($1::int[]) AND e.teacher_id != $2
+      `, [questionIds, req.user.id]);
+
+      if (checkResult.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Access denied for one or more questions' });
+      }
+    }
+
+    await client.query('DELETE FROM questions WHERE id = ANY($1::int[])', [questionIds]);
+    await client.query('COMMIT');
+
+    await logActivity(
+      req.user.id,
+      req.user.name,
+      'question.bulk_delete',
+      `Deleted ${questionIds.length} questions`,
+      req.ip
+    );
+
+    res.json({ message: 'Questions deleted successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Bulk delete question error:', error);
+    res.status(500).json({ error: 'Failed to delete questions' });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /api/question-bank/bulk-import - Bulk import questions
 router.post('/bulk-import', async (req, res) => {
   const client = await db.getClient();

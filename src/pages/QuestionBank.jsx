@@ -35,6 +35,7 @@ export default function QuestionBank() {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedQuestions, setSelectedQuestions] = useState(new Set());
 
   const [formData, setFormData] = useState({
     question_text: '',
@@ -120,8 +121,49 @@ export default function QuestionBank() {
       await questionBankAPI.delete(id);
       toast.success('Question deleted successfully');
       setQuestions(questions.filter(q => q.id !== id));
+      setSelectedQuestions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     } catch (error) {
       toast.error('Failed to delete question');
+    }
+  };
+
+  const toggleQuestionSelect = (id) => {
+    setSelectedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuestions.size === filteredQuestions.length) {
+      setSelectedQuestions(new Set());
+    } else {
+      setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestions.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedQuestions.size} question(s)?`)) return;
+
+    try {
+      await questionBankAPI.bulkDelete(Array.from(selectedQuestions));
+      toast.success(`Deleted ${selectedQuestions.size} question(s) successfully`);
+      setSelectedQuestions(new Set());
+      loadQuestions();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete questions');
     }
   };
 
@@ -391,67 +433,104 @@ export default function QuestionBank() {
           <CardContent className="p-6">
             {filteredQuestions.length > 0 ? (
               <>
+                {/* Bulk Actions Bar */}
+                <div className="flex items-center justify-between p-4 mb-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="select-all-questions"
+                      checked={selectedQuestions.size === filteredQuestions.length && filteredQuestions.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                    <Label htmlFor="select-all-questions" className="cursor-pointer font-medium">
+                      {selectedQuestions.size === filteredQuestions.length && filteredQuestions.length > 0
+                        ? `All ${filteredQuestions.length} questions selected`
+                        : selectedQuestions.size > 0
+                        ? `${selectedQuestions.size} of ${filteredQuestions.length} selected`
+                        : `Select All (${filteredQuestions.length})`}
+                    </Label>
+                  </div>
+                  
+                  {selectedQuestions.size > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected ({selectedQuestions.size})
+                    </Button>
+                  )}
+                </div>
+
                 <div className="space-y-4">
                   {paginatedQuestions.map((question, index) => (
-                  <div key={question.id} className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          {getDifficultyBadge(question.difficulty)}
-                          {question.subject && (
-                            <Badge variant="outline">{question.subject}</Badge>
-                          )}
+                  <div key={question.id} className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedQuestions.has(question.id)}
+                      onCheckedChange={() => toggleQuestionSelect(question.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {getDifficultyBadge(question.difficulty)}
+                            {question.subject && (
+                              <Badge variant="outline">{question.subject}</Badge>
+                            )}
+                          </div>
+                          <h4 className="font-medium text-slate-900 mb-2">
+                            <span>{(currentPage - 1) * itemsPerPage + index + 1}. </span>
+                            <span dangerouslySetInnerHTML={{ __html: question.question_text }} />
+                          </h4>
                         </div>
-                        <h4 className="font-medium text-slate-900 mb-2">
-                          <span>{(currentPage - 1) * itemsPerPage + index + 1}. </span>
-                          <span dangerouslySetInnerHTML={{ __html: question.question_text }} />
-                        </h4>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(question)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(question.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(question)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(question.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className={question.correct_answer === 'A' ? 'text-green-600 font-medium' : ''}>
-                          A: <span dangerouslySetInnerHTML={{ __html: question.option_a }} />
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={question.correct_answer === 'B' ? 'text-green-600 font-medium' : ''}>
-                          B: <span dangerouslySetInnerHTML={{ __html: question.option_b }} />
-                        </span>
-                      </div>
-                      {question.option_c && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <span className={question.correct_answer === 'C' ? 'text-green-600 font-medium' : ''}>
-                            C: <span dangerouslySetInnerHTML={{ __html: question.option_c }} />
+                          <span className={question.correct_answer?.includes('A') ? 'text-green-600 font-medium' : ''}>
+                            A: <span dangerouslySetInnerHTML={{ __html: question.option_a }} />
                           </span>
                         </div>
-                      )}
-                      {question.option_d && (
                         <div className="flex items-center gap-2">
-                          <span className={question.correct_answer === 'D' ? 'text-green-600 font-medium' : ''}>
-                            D: <span dangerouslySetInnerHTML={{ __html: question.option_d }} />
+                          <span className={question.correct_answer?.includes('B') ? 'text-green-600 font-medium' : ''}>
+                            B: <span dangerouslySetInnerHTML={{ __html: question.option_b }} />
                           </span>
                         </div>
-                      )}
-                    </div>
-                    <div className="mt-2 text-xs text-slate-500">
-                      Points: {question.points} | Usage: {question.usage_count || 0} exam(s)
+                        {question.option_c && (
+                          <div className="flex items-center gap-2">
+                            <span className={question.correct_answer?.includes('C') ? 'text-green-600 font-medium' : ''}>
+                              C: <span dangerouslySetInnerHTML={{ __html: question.option_c }} />
+                            </span>
+                          </div>
+                        )}
+                        {question.option_d && (
+                          <div className="flex items-center gap-2">
+                            <span className={question.correct_answer?.includes('D') ? 'text-green-600 font-medium' : ''}>
+                              D: <span dangerouslySetInnerHTML={{ __html: question.option_d }} />
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        Points: {question.points} | Usage: {question.usage_count || 0} exam(s)
+                      </div>
                     </div>
                   </div>
                   ))}

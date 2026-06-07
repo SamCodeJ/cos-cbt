@@ -204,6 +204,11 @@ export const questionBankAPI = {
     const response = await apiClient.post('/question-bank/bulk-import', { questions });
     return response.data;
   },
+
+  bulkDelete: async (questionIds) => {
+    const response = await apiClient.post('/question-bank/bulk-delete', { questionIds });
+    return response.data;
+  },
 };
 
 // Results API
@@ -270,6 +275,11 @@ export const teacherAPI = {
 
   toggleCandidateStatus: async (id) => {
     const response = await apiClient.post(`/teachers/candidates/${id}/toggle-status`);
+    return response.data;
+  },
+
+  bulkDeleteCandidates: async (candidateIds) => {
+    const response = await apiClient.post('/teachers/candidates/bulk-delete', { candidateIds });
     return response.data;
   },
 };

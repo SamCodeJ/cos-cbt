@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Users, Search, Loader2, Mail, Calendar, FileText, CheckCircle2, XCircle, Edit, MoreVertical, Key, Power, Eye, EyeOff, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { teacherAPI } from '@/api/client';
 import { toast } from 'sonner';
 
@@ -46,6 +47,7 @@ export default function Candidates() {
   const [showPassword, setShowPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedCandidates, setSelectedCandidates] = useState(new Set());
 
   useEffect(() => {
     loadCandidates();
@@ -281,6 +283,42 @@ export default function Candidates() {
     }
   };
 
+  const toggleCandidateSelect = (id) => {
+    setSelectedCandidates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCandidates.size === filteredCandidates.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(filteredCandidates.map(c => c.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCandidates.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedCandidates.size} candidate(s)?`)) return;
+
+    try {
+      await teacherAPI.bulkDeleteCandidates(Array.from(selectedCandidates));
+      toast.success(`Deleted ${selectedCandidates.size} candidate(s) successfully`);
+      setSelectedCandidates(new Set());
+      loadCandidates();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete candidates');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-8">
@@ -336,30 +374,69 @@ export default function Candidates() {
               </div>
             ) : (
               <>
+                {/* Bulk Actions Bar */}
+                {filteredCandidates.length > 0 && (
+                  <div className="flex items-center justify-between p-4 mb-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="select-all-candidates"
+                        checked={selectedCandidates.size === filteredCandidates.length && filteredCandidates.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <Label htmlFor="select-all-candidates" className="cursor-pointer font-medium">
+                        {selectedCandidates.size === filteredCandidates.length && filteredCandidates.length > 0
+                          ? `All ${filteredCandidates.length} candidates selected`
+                          : selectedCandidates.size > 0
+                          ? `${selectedCandidates.size} of ${filteredCandidates.length} selected`
+                          : `Select All (${filteredCandidates.length})`}
+                      </Label>
+                    </div>
+                    
+                    {selectedCandidates.size > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Selected ({selectedCandidates.size})
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
                   {paginatedCandidates.map((candidate) => (
                     <div key={candidate.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-slate-900 text-base mb-1">{candidate.name}</h3>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">{candidate.email}</span>
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedCandidates.has(candidate.id)}
+                          onCheckedChange={() => toggleCandidateSelect(candidate.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0 flex justify-between items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-900 text-base mb-1">{candidate.name}</h3>
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                              <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{candidate.email}</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-shrink-0">
-                          {candidate.is_active ? (
-                            <Badge variant="success" className="gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="gap-1">
-                              <XCircle className="w-3 h-3" />
-                              Inactive
-                            </Badge>
-                          )}
+                          <div className="flex-shrink-0">
+                            {candidate.is_active ? (
+                              <Badge variant="success" className="gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="gap-1">
+                                <XCircle className="w-3 h-3" />
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -421,6 +498,7 @@ export default function Candidates() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
+                        <TableHead className="w-12"></TableHead>
                         <TableHead className="w-16">S/N</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
@@ -435,6 +513,12 @@ export default function Candidates() {
                     <TableBody>
                       {paginatedCandidates.map((candidate, index) => (
                         <TableRow key={candidate.id} className="hover:bg-slate-50">
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedCandidates.has(candidate.id)}
+                              onCheckedChange={() => toggleCandidateSelect(candidate.id)}
+                            />
+                          </TableCell>
                           <TableCell className="text-slate-500">
                             {(currentPage - 1) * itemsPerPage + index + 1}
                           </TableCell>

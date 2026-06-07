@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 
 // ================= CONFIGURATION =================
 const BASE_URL = 'http://127.0.0.1:5000/api'; // Changed to port 5000 based on netstat output
-const EXAM_ID = 31; // The ID of the exam to test
+const EXAM_ID = 32 // The ID of the exam to test
 const TOTAL_STUDENTS = 1500; // How many students to simulate
 const RAMP_UP_TIME_MS = 120000; // Spread logins over 120 seconds (2 minutes) to simulate a realistic start
 const AUTOSAVE_INTERVAL_MS = 20000; // Autosave every 20 seconds
@@ -31,7 +31,7 @@ async function getRealStudents() {
   console.log(`🔍 Fetching real students assigned to Exam ${EXAM_ID}...`);
   try {
     const result = await pool.query(`
-      SELECT u.student_id, u.student_id as password -- Assuming password is the same as student_id
+      SELECT u.student_id, '5115' as password -- Assuming password is the same as student_id
       FROM users u
       JOIN exam_candidates ec ON ec.candidate_id = u.id
       WHERE ec.exam_id = $1 AND u.role = 'candidate'

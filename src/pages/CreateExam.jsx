@@ -308,6 +308,7 @@ export default function CreateExam() {
     student_id: '',
     password: '',
   });
+  const [selectedCandidates, setSelectedCandidates] = useState(new Set());
   const [candidatePage, setCandidatePage] = useState(1);
   const [candidatesPerPage, setCandidatesPerPage] = useState(10);
   const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
@@ -349,6 +350,43 @@ export default function CreateExam() {
 
   const removeCandidate = (id) => {
     setCandidates(candidates.filter(c => c.id !== id));
+    setSelectedCandidates(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+  };
+
+  const toggleCandidateSelect = (id) => {
+    setSelectedCandidates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAllCandidates = () => {
+    if (selectedCandidates.size === candidates.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(candidates.map(c => c.id)));
+    }
+  };
+
+  const deleteSelectedCandidates = () => {
+    if (selectedCandidates.size === 0) {
+      toast.error('No candidates selected');
+      return;
+    }
+
+    const count = selectedCandidates.size;
+    setCandidates(candidates.filter(c => !selectedCandidates.has(c.id)));
+    setSelectedCandidates(new Set());
+    toast.success(`Deleted ${count} candidate(s)`);
   };
 
   const handleCandidateCSV = (e) => {
@@ -1102,60 +1140,99 @@ export default function CreateExam() {
                   </div>
                   
                   {candidates.length > 0 ? (
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-16">S/N</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Student ID</TableHead>
-                            <TableHead>Password</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {paginatedCandidates.map((candidate, index) => (
-                          <TableRow key={candidate.id}>
-                            <TableCell className="text-slate-500">
-                              {(candidatePage - 1) * candidatesPerPage + index + 1}
-                            </TableCell>
-                            <TableCell>{candidate.name}</TableCell>
-                            <TableCell>{candidate.email}</TableCell>
-                            <TableCell>{candidate.student_id || '-'}</TableCell>
-                            <TableCell>
-                              {candidate.password ? (
-                                <code className="px-2 py-1 bg-slate-100 rounded text-sm font-mono text-green-700">
-                                  {candidate.password}
-                                </code>
-                              ) : (
-                                <span className="text-sm text-slate-500 italic">
-                                  Password set (hidden after save)
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeCandidate(candidate.id)}
-                              >
-                                <X className="w-4 h-4 text-red-500" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      <Pagination 
-                        currentPage={candidatePage}
-                        totalPages={totalCandidatePages}
-                        onPageChange={setCandidatePage}
-                        itemName="candidates"
-                        itemsPerPage={candidatesPerPage}
-                        onItemsPerPageChange={handleCandidatesPerPageChange}
-                      />
+                    <div className="space-y-4">
+                      {/* Bulk Actions Bar */}
+                      <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="select-all-candidates"
+                            checked={selectedCandidates.size === candidates.length && candidates.length > 0}
+                            onCheckedChange={toggleSelectAllCandidates}
+                          />
+                          <Label htmlFor="select-all-candidates" className="cursor-pointer font-medium">
+                            {selectedCandidates.size === candidates.length && candidates.length > 0
+                              ? `All ${candidates.length} candidates selected`
+                              : selectedCandidates.size > 0
+                              ? `${selectedCandidates.size} of ${candidates.length} selected`
+                              : `Select All (${candidates.length})`}
+                          </Label>
+                        </div>
+                        
+                        {selectedCandidates.size > 0 && (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={deleteSelectedCandidates}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Selected ({selectedCandidates.size})
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12"></TableHead>
+                              <TableHead className="w-16">S/N</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Student ID</TableHead>
+                              <TableHead>Password</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedCandidates.map((candidate, index) => (
+                            <TableRow key={candidate.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedCandidates.has(candidate.id)}
+                                  onCheckedChange={() => toggleCandidateSelect(candidate.id)}
+                                />
+                              </TableCell>
+                              <TableCell className="text-slate-500">
+                                {(candidatePage - 1) * candidatesPerPage + index + 1}
+                              </TableCell>
+                              <TableCell>{candidate.name}</TableCell>
+                              <TableCell>{candidate.email}</TableCell>
+                              <TableCell>{candidate.student_id || '-'}</TableCell>
+                              <TableCell>
+                                {candidate.password ? (
+                                  <code className="px-2 py-1 bg-slate-100 rounded text-sm font-mono text-green-700">
+                                    {candidate.password}
+                                  </code>
+                                ) : (
+                                  <span className="text-sm text-slate-500 italic">
+                                    Password set (hidden after save)
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeCandidate(candidate.id)}
+                                >
+                                  <X className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <Pagination 
+                          currentPage={candidatePage}
+                          totalPages={totalCandidatePages}
+                          onPageChange={setCandidatePage}
+                          itemName="candidates"
+                          itemsPerPage={candidatesPerPage}
+                          onItemsPerPageChange={handleCandidatesPerPageChange}
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-slate-500">
